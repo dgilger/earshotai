@@ -14,6 +14,7 @@
 
     <application
         android:allowBackup="false"
+        android:usesCleartextTraffic="true"
         android:icon="@mipmap/ic_launcher"
         android:label="Earshot"
         android:theme="@style/Earshot">
@@ -25,6 +26,13 @@
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <!-- Pairing link from the server's Connect page: earshot://pair?url=…&token=… -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="earshot" android:host="pair" />
             </intent-filter>
         </activity>
 
@@ -38,7 +46,7 @@
             android:exported="false"
             android:foregroundServiceType="microphone" />
 
-        <!-- Uploads to Google Drive and the call-recording check. -->
+        <!-- The call-recording check. -->
         <service
             android:name=".WorkJob"
             android:exported="false"

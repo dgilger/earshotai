@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Earshot</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<div class="wrap">
+  <!-- Sign in -->
+  <section id="login" class="center hidden">
+    <form class="login" id="loginForm">
+      <div class="brand" style="margin-bottom:24px"><span class="dot ok"></span>earshot</div>
+      <h1>Sign in</h1>
+      <p class="muted small">Type the access token. To see it, run this on the server:<br><code>sudo earshot token</code></p>
+      <input type="password" id="tokenIn" placeholder="Access token" autocomplete="current-password" autofocus>
+      <div class="err" id="loginErr"></div>
+      <button class="primary" style="width:100%;margin-top:8px">Sign in</button>
+    </form>
+  </section>
+
+  <section id="app" class="hidden">
+    <header class="top">
+      <a class="brand" href="#/"><span class="dot" id="dot"></span>earshot</a>
+      <nav>
+        <a href="#/" data-nav="list">Transcripts</a>
+        <a href="#/connect" data-nav="connect">Connect</a>
+        <a href="#/server" data-nav="server">Server</a>
+      </nav>
+      <span class="muted small mono" id="stateLine"></span>
+    </header>
+
+    <!-- Transcripts -->
+    <div id="v-list" class="view">
+      <div class="row" style="margin-bottom:16px">
+        <input type="search" id="q" class="grow" placeholder="Search all transcripts">
+      </div>
+      <label class="drop" id="drop">
+        <input type="file" id="file" accept="audio/*,video/*" multiple hidden>
+        Drop audio files here, or click to upload. The server makes a transcript of each file.
+      </label>
+      <div class="list" id="recs"></div>
+      <p class="muted small" id="recsEmpty"></p>
+    </div>
+
+    <!-- One transcript -->
+    <div id="v-rec" class="view">
+      <a href="#/" class="small mono">← All transcripts</a>
+      <div style="margin-top:16px">
+        <h1 id="recTitle" contenteditable="true" spellcheck="false" title="Click to rename"></h1>
+        <div class="muted small mono" id="recMeta"></div>
+      </div>
+      <div class="row" style="margin-top:16px">
+        <a class="btn" id="recDl">Download .txt</a>
+        <button id="recCopy">Copy text</button>
+        <button id="recRetry" class="hidden">Try again</button>
+        <span class="grow"></span>
+        <button id="recDel" class="danger">Delete</button>
+      </div>
+      <div class="lines" id="recLines"></div>
+    </div>
+
+    <!-- Connect -->
+    <div id="v-connect" class="view">
+      <div class="note hidden" id="localNote">
+        This server has no https address yet, so the phone can only reach it on your home Wi-Fi.
+        To use it from anywhere, run <code>sudo earshot remote</code> on the server.
+      </div>
+      <h2>Phone</h2>
+      <div class="panel">
+        <div class="row" style="align-items:flex-start;gap:24px">
+          <div class="qr" id="qr"></div>
+          <div class="grow">
+            <ol class="steps">
+              <li>Install the Earshot app on the phone.</li>
+              <li>Open the phone camera and point it at this code.</li>
+              <li>Tap the link that shows. A page opens. Tap <b>Connect Earshot</b>.</li>
+              <li>The app opens and says <b>Connected</b>. Done.</li>
+            </ol>
+            <p class="muted small">No camera? In the app, open Settings → Server and paste these:</p>
+            <div class="copy"><code id="pUrl"></code><button data-copy="pUrl">Copy</button></div>
+            <div class="copy"><code id="pTok"></code><button data-copy="pTok">Copy</button></div>
+          </div>
+        </div>
+      </div>
+
+      <h2>AI tools (MCP)</h2>
+      <div class="panel">
+        <p style="margin-top:0">AI tools can list, search and read your transcripts. They cannot change or delete anything.</p>
+        <p class="muted small">Your MCP address (it holds your token, so keep it private):</p>
+        <div class="copy"><code id="mUrl"></code><button data-copy="mUrl">Copy</button></div>
+        <div class="tabs" id="aiTabs">
+          <button data-tab="claude" class="on">Claude (web, desktop, phone)</button>
+          <button data-tab="code">Claude Code</button>
+          <button data-tab="other">Other tools</button>
+        </div>
+        <div data-pane="claude">
+          <ol class="steps">
+            <li>Open <a href="https://claude.ai/settings/connectors" target="_blank" rel="noopener">claude.ai → Settings → Connectors</a>.</li>
+            <li>Click <b>Add custom connector</b>.</li>
+            <li>Name: <code>Earshot</code>. URL: paste the MCP address above. Click <b>Add</b>.</li>
+            <li>In a chat, ask for example: <i>"What did we decide in yesterday's meeting? Use Earshot."</i></li>
+          </ol>
+          <p class="muted small">The connector then works in the Claude desktop and phone apps too.</p>
+        </div>
+        <div data-pane="code" class="hidden">
+          <p class="small">Run this once in a terminal:</p>
+          <div class="copy"><code id="ccCmd"></code><button data-copy="ccCmd">Copy</button></div>
+        </div>
+        <div data-pane="other" class="hidden">
+          <p class="small">Any MCP client that speaks "Streamable HTTP": use the address above. Or use
+            <code id="mBase"></code> with the header <code>Authorization: Bearer &lt;token&gt;</code>.</p>
+          <p class="small muted">Tools: <code>list_transcripts</code>, <code>search_transcripts</code>, <code>get_transcript</code>.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Server -->
+    <div id="v-server" class="view">
+      <h2>Status</h2>
+      <div class="panel"><div class="kv" id="kv"></div></div>
+
+      <h2>Transcription</h2>
+      <div class="panel">
+        <label class="small muted">Speech model</label>
+        <select id="sModel" style="margin:6px 0 4px"></select>
+        <p class="muted small" id="sModelNote" style="margin-top:0"></p>
+        <label class="small muted">Run on</label>
+        <select id="sDevice" style="margin:6px 0 12px">
+          <option value="auto">Automatic (GPU if it works, else CPU)</option>
+          <option value="cuda">NVIDIA GPU</option>
+          <option value="cpu">CPU only</option>
+        </select>
+        <label class="small muted">Language</label>
+        <select id="sLang" style="margin:6px 0 12px">
+          <option value="en">English</option>
+          <option value="">Detect automatically</option>
+          <option value="de">German</option><option value="es">Spanish</option><option value="fr">French</option>
+          <option value="it">Italian</option><option value="nl">Dutch</option><option value="pt">Portuguese</option>
+        </select>
+        <label class="toggle"><input type="checkbox" id="sDiarize"> Label speakers (Speaker 1, Speaker 2…)</label>
+        <label class="toggle"><input type="checkbox" id="sSkip"> Leave out quiet background voices (TV, people nearby)</label>
+        <label class="toggle"><input type="checkbox" id="sKeep"> Keep audio files after transcription</label>
+        <div class="row" style="margin-top:12px"><button class="primary" id="sSave">Save</button><span class="muted small" id="sSaved"></span></div>
+      </div>
+
+      <h2>Access</h2>
+      <div class="panel">
+        <p style="margin-top:0" class="small">Make a new access token if the old one got out. The phone and AI tools stop working until you connect them again.</p>
+        <div class="row"><button class="danger" id="rotate">Make a new token</button><button id="logout">Sign out</button></div>
+      </div>
+    </div>
+  </section>
+</div>
+<script src="/static/app.js"></script>
+</body>
+</html>

@@ -41,10 +41,15 @@ class Processor(private val ctx: Context) {
                 for (idx in Speech.ChunkWriter.ready(dir)) {
                     if (!keepGoing()) return false
                     try {
-                        val lines = Speech.process(ctx, settings, idx) { stage = it }
+                        val lines = if (Server.ready(settings)) {
+                            // Your own server transcribes; null = stopped while waiting (try again later).
+                            Server.transcribe(settings, id, idx, store.stopped(id)?.second?.isNotEmpty() == true,
+                                keepGoing) { stage = it } ?: return false
+                        } else Speech.process(ctx, settings, idx) { stage = it }
                         store.append(id, lines.map { it.timeMs to Speech.line(it) })
                         idx.delete()
                         File(idx.path.removeSuffix(".idx") + ".pcm").delete()  // audio gone once the text is safe
+                        File(idx.path.removeSuffix(".idx") + ".job").delete()
                         lastError = null
                     } catch (t: Throwable) {
                         Log.e("earshot", "processing failed for ${idx.name}", t)
@@ -58,8 +63,10 @@ class Processor(private val ctx: Context) {
                 val stop = store.stopped(id) ?: continue
                 if (dir.listFiles { f -> f.name.endsWith(".pcm.part") }?.isNotEmpty() == true) continue
                 if (store.finish(id, stop.first, stop.second)) finished = true
+                if (Server.ready(settings)) Server.finish(ctx, id, stop.first, stop.second)
                 dir.deleteRecursively()
             }
+            if (settings.serverFinishPending.isNotEmpty()) Server.sendFinishes(ctx)
             if (finished) Uploader.run(ctx)
             return store.sessions().all { it == current() }
         }

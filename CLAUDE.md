@@ -13,7 +13,7 @@ Size, battery life and enclosure come later.
   - `include/secrets.h` — gitignored; copy from `include/secrets.example.h`.
 - `server/` — upload/transcribe/summarize service (Docker).
 - `hardware/` — custom PCB (KiCad 9); `SPEC.md` holds the spec and parts list.
-- `android/` — phone app alternative: REC/STOP (optional auto-record on open, off by default), transcribes on the phone with speaker labels (sherpa-onnx: Parakeet only + pyannote, downloaded on first launch), deletes audio, saves each transcript as .txt into a folder picked with Android's folder picker (no Google sign-in; a sync app copies it to Drive). Also transcribes new files from the phone's call recorder folder. No summaries in the app. APK built by the `Android APK` GitHub Actions workflow (cloud sessions can't download the Android SDK). See `android/README.md`.
+- `android/` — phone app alternative: REC/STOP (optional auto-record on open, off by default), transcribes on the phone with speaker labels (sherpa-onnx: Parakeet only + pyannote, downloaded on first launch), deletes audio, saves each transcript as .txt into a folder picked with Android's folder picker (no Google sign-in; a sync app copies it to Drive). Also transcribes new files from the phone's call recorder folder. Optional own server (Settings → Server) does the transcription instead. No summaries in the app. APK built by the `Android APK` GitHub Actions workflow (cloud sessions can't download the Android SDK). See `android/README.md`.
 
 ## Hardware
 
@@ -91,6 +91,12 @@ Record/stop button, elapsed time, Wi-Fi status, upload status, battery level. Tu
 - Re-summarise: `.venv/bin/python summarizer.py [--backend claude|local] data/*.json`
 - Whisper is fed numpy arrays, not file paths: faster-whisper 1.2.1's file decoder breaks with PyAV 19.
 - Model `large-v3-turbo` int8 on CPU, about 7 s per 10 s clip (`small.en` is ~2 s but mishears more words). Loads from the local cache only (no Hugging Face call after the first download).
+
+## Self-hosted server (server/earshot/, the main path for the phone app)
+- One-command guided installer `server/install.sh` (Debian/Ubuntu, systemd): checks, GPU detection, uv venv in `/opt/earshot`, models, `earshot` service on port 8000, Cloudflare Tunnel or Tailscale Funnel for https without a VPN, phone pairing QR. Clone URL is the `REPO_URL` constant at the top.
+- FastAPI app `python -m earshot.main`: phone chunk API (`/api/chunks` + job polling), portal (`earshot/portal/`, plain JS), MCP at `/mcp` (token in Bearer header or `/mcp/<token>`), SQLite + FTS5 in `/var/lib/earshot`.
+- Speech: faster-whisper (large-v3 on GPU, large-v3-turbo on CPU, falls back to CPU if CUDA fails) + sherpa-onnx pyannote 3.0/TitaNet speaker labels (GitHub-hosted models, no Hugging Face token).
+- App: Settings → Server (or earshot://pair link from the portal QR). With a server set the phone only runs VAD; chunks stay on the phone until the server returns their text. See `server/README.md`.
 
 ## Milestones
 1. Flash a hello-world: serial output, screen shows text, Wi-Fi connects.

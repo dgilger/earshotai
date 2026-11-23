@@ -27,3 +27,6 @@ hardware/enclosure/board-model.js
 # Enclosure: generated reference geometry
 hardware/enclosure/out/earshot-assembly.step
 hardware/enclosure/out/ref-*.stl
+
+# Earshot server data when run from a checkout
+server/data-hub/

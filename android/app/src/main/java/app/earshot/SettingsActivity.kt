@@ -39,10 +39,16 @@ class SettingsActivity : Activity() {
         val root = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         root.header("Settings", "Earshot setup", back = { finish() })
 
+        serverCard(root)
+
         // ---- Transcription ----
         root.card {
-            label("Transcription")
-            text(14f) { text = "Parakeet 0.6B (NVIDIA), English, on this phone" }
+            label("Transcription on this phone")
+            text(14f) { text = "Parakeet 0.6B (NVIDIA), English" }
+            text(12f, color = R.color.muted) {
+                text = "Used when no server is connected."
+                visibility = if (Server.ready(s)) View.VISIBLE else View.GONE
+            }
             val st = text(12f, color = R.color.accent)
             refreshers += {
                 st.text = when {
@@ -153,6 +159,66 @@ class SettingsActivity : Activity() {
         super.onPause()
     }
 
+    // ---- Your own server ----
+
+    private lateinit var serverStatus: TextView
+    private lateinit var serverUrlIn: EditText
+    private lateinit var serverTokenIn: EditText
+    private lateinit var serverOff: Button
+
+    private fun serverCard(root: LinearLayout) {
+        root.card(R.color.accent) {
+            label("Server")
+            serverStatus = text(14f)
+            space(4)
+            text(13f, color = R.color.muted) {
+                text = "Your own Earshot server makes better transcripts (Whisper large-v3, speaker labels) and " +
+                    "keeps them where AI tools can read them. If the server can't be reached, recordings wait on " +
+                    "this phone and are sent later.\n\nFastest way: open the server's web page, go to Connect, and " +
+                    "scan the code with the phone camera. Or type the address and token here."
+            }
+            serverUrlIn = field(this, "Address (for example https://earshot.example.com)", s.serverUrl)
+            serverTokenIn = field(this, "Access token", s.serverToken, secret = true)
+            space(10)
+            row {
+                pill("Connect", primary = true) { connect(serverUrlIn.text.toString(), serverTokenIn.text.toString()) }
+                serverOff = pill("Disconnect", color = R.color.live) {
+                    s.serverUrl = ""; s.serverToken = ""; s.serverInfo = ""
+                    serverUrlIn.setText(""); serverTokenIn.setText("")
+                    Models.ensure(this@SettingsActivity, Models.needed(s))   // the phone transcribes again
+                    showServer()
+                }
+            }
+        }
+        showServer()
+    }
+
+    private fun showServer() {
+        val on = Server.ready(s)
+        serverStatus.text = if (on) "Connected: ${s.serverUrl}${if (s.serverInfo.isNotEmpty()) "\n" + s.serverInfo else ""}"
+            else "Not connected. Transcription runs on this phone."
+        serverStatus.setTextColor(col(if (on) R.color.accent else R.color.text))
+        serverOff.visibility = if (on) View.VISIBLE else View.GONE
+    }
+
+    private fun connect(rawUrl: String, rawToken: String) {
+        val url = Server.normalize(rawUrl)
+        val token = rawToken.trim()
+        if (url.isEmpty() || token.isEmpty()) { toast("Type the address and the token."); return }
+        serverStatus.text = "Checking…"
+        Thread {
+            val result = try { Result.success(Server.check(url, token)) } catch (e: Exception) { Result.failure(e) }
+            ui.post {
+                result.onSuccess { info ->
+                    s.serverUrl = url; s.serverToken = token; s.serverInfo = info
+                    serverUrlIn.setText(url)
+                    toast("Connected to your server")
+                }.onFailure { toast(it.message ?: "Could not connect") }
+                showServer()
+            }
+        }.start()
+    }
+
     // ---- Transcript folder ----
 
     private lateinit var outStatus: TextView
@@ -162,7 +228,7 @@ class SettingsActivity : Activity() {
             label("Transcript folder")
             outStatus = text(14f)
             text(13f, color = R.color.muted) {
-                text = "Each finished transcript is saved here as a .txt file. Make a new folder in the picker if you " +
+                text = "Optional when a server is connected. Each finished transcript is saved here as a .txt file. Make a new folder in the picker if you " +
                     "want, e.g. Documents/Earshot.\n\nGoogle Drive: if Drive shows in the picker, pick a Drive folder " +
                     "directly. On most phones it doesn't; then install \"Autosync for Google Drive\" (MetaCtrl) from " +
                     "the Play Store and sync this folder to a Drive folder. No Google Cloud setup needed."

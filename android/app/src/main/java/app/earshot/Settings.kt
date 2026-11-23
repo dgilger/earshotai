@@ -76,5 +76,24 @@ class Settings(context: Context) {
         get() = p.getStringSet("calls_seen", emptySet())!!.toSet()
         set(v) = p.edit().putStringSet("calls_seen", v).commit().let { }
 
+    /** Your own Earshot server (https://…), "" = transcribe on this phone. */
+    var serverUrl: String
+        get() = p.getString("server_url", "")!!
+        set(v) = p.edit().putString("server_url", v).apply()
+
+    var serverToken: String
+        get() = p.getString("server_token", "")!!
+        set(v) = p.edit().putString("server_token", v).apply()
+
+    /** Short description of the server from the last check ("large-v3 on GPU"). */
+    var serverInfo: String
+        get() = p.getString("server_info", "")!!
+        set(v) = p.edit().putString("server_info", v).apply()
+
+    /** "<session>\t<end ms>\t<label>" for recordings the server hasn't been told are over yet. */
+    var serverFinishPending: Set<String>
+        get() = p.getStringSet("server_finish", emptySet())!!.toSet()
+        set(v) = p.edit().putStringSet("server_finish", v).commit().let { }
+
     val outReady get() = outFolder.isNotEmpty()
 }

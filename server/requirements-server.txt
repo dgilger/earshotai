@@ -1,0 +1,10 @@
+# Earshot server (python -m earshot.main). Python 3.10-3.12. The installer installs these.
+fastapi==0.165.0
+uvicorn==0.54.0
+python-multipart==0.0.34
+mcp==2.3.0
+faster-whisper==1.2.1
+ctranslate2==4.9.1
+sherpa-onnx==2.0.3
+numpy==2.5.5
+qrcode==8.2

@@ -25,6 +25,15 @@ leaves the phone and is deleted once its text is saved.
   speakers, such as a TV or people at the next table. Turn it off if a quiet speaker goes missing.
 - No live (word-by-word) transcription: earlier tests were unreliable, and speaker labels need whole parts.
 
+### Your own server (better transcripts)
+Settings → **Server**: connect the app to your own Earshot server (see `server/README.md`; one
+install command on a Linux PC). Fastest: scan the QR code on the server's **Connect** page with the
+phone camera and tap **Connect Earshot**. Then the phone only records and finds speech; the server
+transcribes with Whisper large-v3 and labels speakers. Each chunk stays on the phone until its text
+is back, so nothing is lost when the server can't be reached: it is sent again later. The phone's
+speech models are not needed (only the 1 MB voice detector). Disconnect to transcribe on the phone again.
+A transcript folder is optional with a server.
+
 ### Getting transcripts into Google Drive (no Google Cloud setup)
 Settings → **Transcript folder → Choose folder** opens Android's folder picker. If Google Drive shows in it,
 pick a Drive folder directly. On most phones it doesn't, because the Drive app doesn't offer its folders to

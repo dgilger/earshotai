@@ -37,7 +37,13 @@ object Uploader {
         val store = Store(ctx)
         val files = store.waiting()
         if (files.isEmpty()) return
-        if (!s.outReady) { s.uploadError = "Not saved yet: choose a transcript folder in Settings"; return }
+        if (!s.outReady) {
+            if (Server.ready(s)) {   // the transcripts are on your server; a phone folder is optional
+                files.forEach { store.markUploaded(it) }
+                s.uploadError = ""
+            } else s.uploadError = "Not saved yet: choose a transcript folder in Settings"
+            return
+        }
         try {
             val tree = Uri.parse(s.outFolder)
             val dir = DocumentsContract.buildDocumentUriUsingTree(tree, DocumentsContract.getTreeDocumentId(tree))

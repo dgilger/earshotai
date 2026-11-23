@@ -17,6 +17,7 @@ import android.view.Gravity
 import android.view.View
 import android.widget.Button
 import android.widget.LinearLayout
+import android.widget.Toast
 import android.widget.ScrollView
 import android.widget.TextView
 import java.io.File
@@ -65,10 +66,12 @@ class MainActivity : Activity() {
         Models.removeOld(this)
         Uploader.scheduleCalls(this)
         Models.ensure(this, Models.needed(settings))   // first launch: fetch the speech models right away
-        armed = savedInstanceState == null && intent?.getBooleanExtra(EXTRA_NO_AUTOSTART, false) != true
+        armed = savedInstanceState == null && intent?.getBooleanExtra(EXTRA_NO_AUTOSTART, false) != true &&
+            intent?.data?.scheme != "earshot"
+        if (savedInstanceState == null) handlePairLink(intent)
 
         val root = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-        root.header("Earshot", "On-device transcripts", action = "Settings") {
+        root.header("Earshot", if (Server.ready(settings)) "Transcripts on your server" else "On-device transcripts", action = "Settings") {
             startActivity(Intent(this, SettingsActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NO_USER_ACTION))
         }
 
@@ -108,6 +111,38 @@ class MainActivity : Activity() {
         super.onNewIntent(intent)
         setIntent(intent)
         if (intent.getBooleanExtra(EXTRA_NO_AUTOSTART, false)) armed = false
+        if (intent.data?.scheme == "earshot") armed = false
+        handlePairLink(intent)
+    }
+
+    /**
+     * earshot://pair?url=…&token=… comes from the "Connect Earshot" button on the server's pairing
+     * page (opened by scanning the QR code on the server's Connect page). Asks first, then checks.
+     */
+    private fun handlePairLink(i: Intent?) {
+        val data = i?.data ?: return
+        if (data.scheme != "earshot" || data.host != "pair") return
+        i.data = null   // handle once
+        val url = Server.normalize(data.getQueryParameter("url") ?: "")
+        val token = data.getQueryParameter("token")?.trim() ?: ""
+        if (url.isEmpty() || token.isEmpty()) { Toast.makeText(this, "That link is not complete. Scan the code again.", Toast.LENGTH_LONG).show(); return }
+        AlertDialog.Builder(this)
+            .setTitle("Connect to this server?")
+            .setMessage("$url\n\nRecordings will be sent there to be transcribed. Only connect to your own server.")
+            .setPositiveButton("Connect") { _, _ ->
+                Thread {
+                    val msg = try {
+                        val info = Server.check(url, token)
+                        settings.serverUrl = url; settings.serverToken = token; settings.serverInfo = info
+                        "Connected to your server ($info)"
+                    } catch (e: Exception) {
+                        "Could not connect: ${e.message}"
+                    }
+                    ui.post { AlertDialog.Builder(this).setMessage(msg).setPositiveButton("OK", null).show() }
+                }.start()
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
     }
 
     /** The user went to another app or home: the next time Earshot comes back, record again. */
@@ -188,7 +223,7 @@ class MainActivity : Activity() {
             settings.uploadError.takeIf { it.isNotEmpty() && store.waiting().isNotEmpty() }?.let { append(it) }
             Processor.stage.takeIf { it.isNotEmpty() }?.let { if (isNotEmpty()) append("\n"); append(it) }
             CallRecordings.state.takeIf { it.isNotEmpty() }?.let { if (isNotEmpty()) append("\n"); append(it) }
-            Processor.lastError?.let { if (isNotEmpty()) append("\n"); append("Transcription error: $it") }
+            Processor.lastError?.let { if (isNotEmpty()) append("\n"); append(if (Server.ready(settings)) it else "Transcription error: $it") }
         }
         workView.visibility = if (workView.text.isEmpty()) View.GONE else View.VISIBLE
 

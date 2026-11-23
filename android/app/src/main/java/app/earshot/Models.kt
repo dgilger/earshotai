@@ -67,12 +67,13 @@ object Models {
 
     /** Models needed to record and transcribe with the current settings. */
     fun needed(s: Settings): List<Model> {
+        if (Server.ready(s)) return listOf(VAD)   // your server transcribes; the phone only finds speech
         val l = mutableListOf(VAD, asr(s.asrModel))
         if (s.diarize) l += listOf(SEGMENTATION, EMBEDDING)
         return l
     }
 
-    fun ready(ctx: Context, s: Settings) = has(ctx, VAD) && has(ctx, asr(s.asrModel))
+    fun ready(ctx: Context, s: Settings) = has(ctx, VAD) && (Server.ready(s) || has(ctx, asr(s.asrModel)))
 
     fun delete(ctx: Context, m: Model) {
         if (m.archive) File(dir(ctx), m.id).deleteRecursively() else file(ctx, m).delete()

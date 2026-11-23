@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Connect Earshot</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<div class="wrap center">
+  <div class="login">
+    <div class="brand" style="margin-bottom:24px"><span class="dot ok"></span>earshot</div>
+    <h1>Connect the app</h1>
+    <p class="muted">Tap the button. The Earshot app opens and connects to this server.</p>
+    <a class="btn" id="go" style="display:block;text-align:center;background:var(--accent);color:#000;border-color:var(--accent);font-weight:700;padding:14px">Connect Earshot</a>
+    <p class="muted small" style="margin-top:20px">Nothing happens? Install the Earshot app first, then scan the code again.
+      Or open the app, go to Settings → Server and paste the address and token by hand.</p>
+    <p class="err" id="err"></p>
+  </div>
+</div>
+<script>
+  // The token is in the part after '#', which the browser never sends to the server.
+  const token = decodeURIComponent(location.hash.slice(1));
+  const url = location.origin;
+  const go = document.getElementById('go');
+  if (!token) {
+    document.getElementById('err').textContent = 'This link has no token. Scan the code on the Connect page again.';
+    go.style.display = 'none';
+  } else {
+    const q = 'url=' + encodeURIComponent(url) + '&token=' + encodeURIComponent(token);
+    // Android: an intent link opens the app directly. Other phones: the earshot:// link.
+    go.href = /Android/i.test(navigator.userAgent)
+      ? 'intent://pair?' + q + '#Intent;scheme=earshot;package=app.earshot;end'
+      : 'earshot://pair?' + q;
+  }
+</script>
+</body>
+</html>
