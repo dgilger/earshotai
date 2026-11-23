@@ -87,7 +87,7 @@ run() {   # run "what" command… : runs quietly into the log, shows a spinner
   return $rc
 }
 
-py()  { runuser -u $SVC_USER -- env $(grep -v '^#' "$ENV_FILE" 2>/dev/null | xargs) PYTHONPATH="$APP_DIR/server" "$APP_DIR/venv/bin/python" "$@"; }
+py()  { (cd / && runuser -u $SVC_USER -- env HOME="$DATA_DIR" $(grep -v '^#' "$ENV_FILE" 2>/dev/null | xargs) PYTHONPATH="$APP_DIR/server" "$APP_DIR/venv/bin/python" "$@"); }
 lan_ip() { hostname -I 2>/dev/null | awk '{print $1}'; }
 public_url() { py -c "from earshot import config; print(config.load()['public_url'])" 2>/dev/null; }
 
@@ -118,6 +118,21 @@ check_system() {
         "Install Ubuntu Server 24.04 or Debian 12 (both free), then run the installer again."
   fi
 
+  # A minimal Debian has no curl and no certificates; get those first so the checks below work.
+  local missing=""
+  command -v curl > /dev/null || missing="$missing curl"
+  [ -s /etc/ssl/certs/ca-certificates.crt ] || missing="$missing ca-certificates"
+  if [ -n "$missing" ]; then
+    say "Installing basic tools first:$missing"
+    export DEBIAN_FRONTEND=noninteractive
+    run "Updating the package list" apt-get update -q \
+      || die "Could not update the package list, so this computer may have no internet." \
+             "Check the internet connection (try: ping 1.1.1.1), then run the installer again."
+    run "Installing$missing" apt-get install -y -q $missing \
+      || die "Could not install:$missing" "Run 'sudo apt-get install$missing' by hand to see the problem."
+    ok "Installed:$missing"
+  fi
+
   case "$(uname -m)" in
     x86_64|aarch64) ;;
     *) die "This processor type ($(uname -m)) is not supported." "Use a 64-bit PC (x86_64) or a 64-bit ARM computer." ;;
@@ -141,10 +156,14 @@ check_system() {
   fi
   ok "${free_gb} GB of free disk space"
 
-  if curl -fsS --max-time 15 -o /dev/null https://github.com; then
+  if ! getent hosts github.com > /dev/null; then
+    die "This computer cannot look up internet names (DNS does not work)." \
+        "Check the network settings (try: ping github.com). In a Proxmox container, check its DNS settings."
+  elif curl -fsS --max-time 15 -o /dev/null https://github.com 2>> "$LOG"; then
     ok "Internet works"
   else
-    die "Cannot reach github.com." "Check the internet connection of this computer (try: ping 1.1.1.1), then run the installer again."
+    die "Cannot reach github.com over https." \
+        "Check the internet connection of this computer (try: curl -I https://github.com), then run the installer again."
   fi
 
   if command -v systemctl > /dev/null && [ -d /run/systemd/system ]; then
@@ -226,6 +245,16 @@ get_code() {
     return
   fi
   rm -rf "$APP_DIR.tmp"
+  # Started from a downloaded copy (git clone …): use that copy, no second download needed.
+  local here; here=$(cd "$(dirname "$(readlink -f "$0")")/.." 2>/dev/null && pwd)
+  if [ -n "$here" ] && [ -f "$here/server/earshot/main.py" ] && git -C "$here" rev-parse HEAD > /dev/null 2>&1; then
+    if run "Copying Earshot from $here" git clone -q "$here" "$APP_DIR.tmp"; then
+      git -C "$APP_DIR.tmp" remote set-url origin "$REPO_URL"
+      mv "$APP_DIR.tmp" "$APP_DIR"
+      ok "Copied to $APP_DIR"
+      return
+    fi
+  fi
   if run "Downloading from GitHub" git clone --depth 1 -b "$BRANCH" "$REPO_URL" "$APP_DIR.tmp"; then
     mv "$APP_DIR.tmp" "$APP_DIR"
     ok "Downloaded to $APP_DIR"
@@ -293,6 +322,7 @@ configure() {
 EARSHOT_DATA=$DATA_DIR
 EARSHOT_PORT=$PORT
 HF_HUB_DISABLE_TELEMETRY=1
+HF_HOME=$DATA_DIR/hf
 ${libs:+LD_LIBRARY_PATH=$libs}
 EOF
   chmod 640 "$ENV_FILE"; chgrp $SVC_USER "$ENV_FILE"
