@@ -270,6 +270,13 @@ def rotate_token(request: Request, response: Response):
     return {"token": t}
 
 
+@app.post("/api/mcp-token", dependencies=[Depends(auth)])
+def rotate_mcp_token(request: Request):
+    """New read-only MCP token. Old MCP addresses stop working at once; the phone is not touched."""
+    t = config.new_mcp_token()
+    return {"mcp_url": f"{base_url(request)}/mcp/{t}"}
+
+
 @app.get("/api/pair", dependencies=[Depends(auth)])
 def pair_info(request: Request):
     import qrcode

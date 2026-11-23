@@ -95,6 +95,12 @@ def new_token() -> str:
         return _write_token(TOKEN_FILE)
 
 
+def new_mcp_token() -> str:
+    """A new read-only token for AI tools only. The old MCP address stops working; the phone keeps working."""
+    with _lock:
+        return _write_token(MCP_TOKEN_FILE)
+
+
 def _write_token(path: Path) -> str:
     ensure_dirs()
     t = secrets.token_urlsafe(24)   # 192 random bits
