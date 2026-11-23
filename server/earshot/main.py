@@ -277,6 +277,41 @@ def rotate_mcp_token(request: Request):
     return {"mcp_url": f"{base_url(request)}/mcp/{t}"}
 
 
+# ---- updates from the portal ----
+# The service can't update itself (it runs as a locked-down user). It writes a request file;
+# a root systemd unit (earshot-updater, set up by the installer) does the work and writes
+# update-status.json and update.log back into the data folder.
+UPDATE_REQ = config.DATA / "update-request"
+UPDATE_STATUS = config.DATA / "update-status.json"
+UPDATE_LOG = config.DATA / "update.log"
+
+
+@app.get("/api/update", dependencies=[Depends(auth)])
+def update_status():
+    import json
+    try:
+        s = json.loads(UPDATE_STATUS.read_text())
+    except (FileNotFoundError, ValueError):
+        s = {"state": "unknown", "available": False, "notes": [], "current": "", "latest": "", "message": ""}
+    s["pending"] = UPDATE_REQ.exists()   # asked, the updater has not picked it up yet
+    s["installed"] = Path("/etc/systemd/system/earshot-updater.path").exists()
+    s["version"] = __version__
+    try:
+        lines = UPDATE_LOG.read_text(errors="replace").splitlines()
+        s["log"] = [ln.strip() for ln in lines if ln.strip()][-14:] if s.get("state") in ("updating", "error", "done") else []
+    except FileNotFoundError:
+        s["log"] = []
+    return s
+
+
+@app.post("/api/update", dependencies=[Depends(auth)])
+def update_request(action: str = Body("check", embed=True)):
+    if action not in ("check", "update"):
+        raise HTTPException(400, "action must be check or update")
+    UPDATE_REQ.write_text(action + "\n")
+    return {"ok": True}
+
+
 @app.get("/api/pair", dependencies=[Depends(auth)])
 def pair_info(request: Request):
     import qrcode

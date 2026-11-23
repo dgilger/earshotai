@@ -30,6 +30,12 @@ header.top { display: flex; align-items: center; gap: 16px 24px; padding: 22px 0
 .caption { font-size: 11px; color: var(--muted); display: flex; align-items: center; gap: 8px; }
 canvas.orb { width: 40px; height: 40px; image-rendering: pixelated; flex: none; }
 canvas.orb.big { width: 144px; height: 144px; display: block; margin: 0 0 24px; }
+nav a .badge { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); margin-left: 8px; vertical-align: 2px; }
+ul.notes { margin: 0; padding: 0; list-style: none; }
+ul.notes li { display: grid; grid-template-columns: 96px 1fr; gap: 12px; padding: 6px 0; border-bottom: 1px solid var(--line); font-size: 13px; }
+ul.notes li:last-child { border-bottom: 0; }
+ul.notes .d { color: var(--muted); font-size: 11px; line-height: 2; }
+pre.log { margin: 0; font: 11px/1.7 var(--mono); color: var(--muted); white-space: pre-wrap; word-break: break-word; }
 .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); display: inline-block; flex: none; }
 .dot.ok { background: var(--accent); } .dot.busy { background: var(--warn); } .dot.bad, .dot.live { background: var(--bad); }
 nav { display: flex; gap: 8px; margin-left: auto; flex-wrap: wrap; }

@@ -103,6 +103,12 @@ What to know:
   if someone could take the disk.
 - The AI tool you connect (for example Claude) stores the MCP address and reads transcripts you ask about.
 
+## Updates
+
+The portal shows a dot on **Update** when a newer version is on GitHub (it looks once a day), with the list of
+changes. Click **Update now**; Earshot updates itself and restarts. Your transcripts and settings stay.
+Or run `sudo earshot update` on the server.
+
 ## Everyday commands
 
 ```
