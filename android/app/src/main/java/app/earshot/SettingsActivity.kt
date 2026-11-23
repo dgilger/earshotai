@@ -46,14 +46,27 @@ class SettingsActivity : Activity() {
             label("Transcription on this phone")
             text(14f) { text = "Parakeet 0.6B (NVIDIA), English" }
             text(12f, color = R.color.muted) {
-                text = "Used when no server is connected."
-                visibility = if (Server.ready(s)) View.VISIBLE else View.GONE
+                text = "Only a fallback: your server makes better transcripts. Off: recordings wait on this phone " +
+                    "until a server is connected."
             }
+            space(6)
+            addView(Switch(context).apply {
+                text = "Transcribe on this phone when no server is connected"
+                textSize = 14f
+                typeface = MONO
+                setTextColor(col(R.color.text))
+                isChecked = s.onDevice
+                setOnCheckedChangeListener { _, on ->
+                    s.onDevice = on
+                    if (on) Models.ensure(this@SettingsActivity, Models.needed(s))
+                }
+            })
             val st = text(12f, color = R.color.accent)
             refreshers += {
                 st.text = when {
                     Models.state.isNotEmpty() -> Models.state
                     Models.lastError != null && !Models.busy -> "Download failed: ${Models.lastError}"
+                    !s.onDevice -> "OFF · your server transcribes"
                     Models.needed(s).all { Models.has(this@SettingsActivity, it) } -> "READY · models downloaded"
                     else -> "Downloading soon…"
                 }

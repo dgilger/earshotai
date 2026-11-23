@@ -38,6 +38,7 @@ class Processor(private val ctx: Context) {
                     Speech.ChunkWriter.recover(dir)
                     store.markStopped(id, dir.listFiles()?.maxOfOrNull { it.lastModified() } ?: System.currentTimeMillis())
                 }
+                if (settings.waitingForServer) return false   // keep the audio until a server is connected
                 for (idx in Speech.ChunkWriter.ready(dir)) {
                     if (!keepGoing()) return false
                     try {

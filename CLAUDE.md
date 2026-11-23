@@ -13,7 +13,7 @@ Size, battery life and enclosure come later.
   - `include/secrets.h` — gitignored; copy from `include/secrets.example.h`.
 - `server/` — upload/transcribe/summarize service (Docker).
 - `hardware/` — custom PCB (KiCad 9); `SPEC.md` holds the spec and parts list.
-- `android/` — phone app alternative: REC/STOP (optional auto-record on open, off by default), transcribes on the phone with speaker labels (sherpa-onnx: Parakeet only + pyannote, downloaded on first launch), deletes audio, saves each transcript as .txt into a folder picked with Android's folder picker (no Google sign-in; a sync app copies it to Drive). Also transcribes new files from the phone's call recorder folder. Optional own server (Settings → Server) does the transcription instead. No summaries in the app. APK built by the `Android APK` GitHub Actions workflow (cloud sessions can't download the Android SDK). See `android/README.md`.
+- `android/` — phone app: REC/STOP (optional auto-record on open, off by default). Server first: the phone runs only VAD and sends speech chunks to your own server (`server/earshot/`, paired by QR); chunks wait on the phone until a server is connected. Fallback (Settings, off by default): transcribe on the phone with sherpa-onnx Parakeet + pyannote and save .txt into a folder picked with Android's folder picker. Also transcribes new files from the phone's call recorder folder. No summaries in the app. APK built by the `Android APK` GitHub Actions workflow (cloud sessions can't download the Android SDK). See `android/README.md`.
 
 ## Hardware
 

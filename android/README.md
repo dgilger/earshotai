@@ -1,19 +1,24 @@
 # Earshot for Android
 
-Record, transcribe on the phone, save the transcript as a text file in a folder you choose. That's all.
-Notes and summaries are made later by Claude, reading the transcripts from Google Drive.
+Record on the phone. Your own Earshot server (see `server/`) makes the transcript.
 
 ```
-REC ─► mic ─► Silero VAD ─► speech chunks ─► who spoke when ─► Parakeet ─► transcript.txt ─► your folder
-              (silence       (closed after    (pyannote +                  (audio           (a sync app can
-               dropped)       1 min quiet)     TitaNet)                     deleted)         copy it to Drive)
+REC ─► mic ─► Silero VAD ─► speech chunks ─► your server (Whisper + speaker labels) ─► portal, MCP
+              (silence       (kept on the phone until the server returns their text)
+               dropped)
 ```
 
-All speech processing runs on the phone with [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx). Audio never
-leaves the phone and is deleted once its text is saved.
+**Connect the server first:** on the server's web page open **Connect** and scan the code with the phone
+camera (or run `sudo earshot pair` on the server). Until a server is connected, recordings wait on the phone
+and are sent once it is.
+
+**Fallback, no server:** Settings → *Transcribe on this phone when no server is connected* (or **Use this phone
+instead** on the main screen). Then the phone downloads Parakeet and the speaker models (about 530 MB) and
+transcribes with [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx); each transcript is saved as a .txt file
+in a folder you choose.
 
 ## Using it
-- On first launch the speech models (about 530 MB) download by themselves. Progress shows under the button.
+- On first launch only the small voice detector downloads. Progress shows under the button.
 - Tap **REC** to record and **STOP** to finish. The notification has a Stop button too.
 - **Start recording when Earshot opens** (Settings, off by default): opening the app, for example with a
   gesture, starts a recording at once. It does not start during a phone call.
