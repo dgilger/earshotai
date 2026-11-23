@@ -33,7 +33,7 @@ DEFAULTS = {
     "device": "auto",         # auto | cuda | cpu
     "language": "en",         # "" = detect
     "diarize": True,          # speaker labels
-    "skip_background": True,  # leave out voices much quieter than the conversation (TV, next table)
+    "skip_background": False,  # leave out voices far quieter than the conversation (TV across the room)
     "keep_audio": False,      # keep audio files after transcription
     "public_url": "",         # https address the phone and AI tools use (set by the installer)
 }
@@ -46,12 +46,19 @@ def ensure_dirs() -> None:
         d.mkdir(parents=True, exist_ok=True)
 
 
+SETTINGS_REV = 2   # 2: background filter off by default (it dropped people a few steps away)
+
+
 def load() -> dict:
     s = dict(DEFAULTS)
     try:
-        s.update(json.loads(SETTINGS_FILE.read_text()))
+        saved = json.loads(SETTINGS_FILE.read_text())
+        if saved.get("rev", 1) < 2:
+            saved.pop("skip_background", None)   # saved with the old default: use the new one
+        s.update(saved)
     except (FileNotFoundError, ValueError):
         pass
+    s["rev"] = SETTINGS_REV
     return s
 
 

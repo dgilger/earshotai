@@ -46,14 +46,27 @@ class SettingsActivity : Activity() {
             label("Transcription on this phone")
             text(14f) { text = "Parakeet 0.6B (NVIDIA), English" }
             text(12f, color = R.color.muted) {
-                text = "Used when no server is connected."
-                visibility = if (Server.ready(s)) View.VISIBLE else View.GONE
+                text = "Only a fallback: your server makes better transcripts. Off: recordings wait on this phone " +
+                    "until a server is connected."
             }
+            space(6)
+            addView(Switch(context).apply {
+                text = "Transcribe on this phone when no server is connected"
+                textSize = 14f
+                typeface = MONO
+                setTextColor(col(R.color.text))
+                isChecked = s.onDevice
+                setOnCheckedChangeListener { _, on ->
+                    s.onDevice = on
+                    if (on) Models.ensure(this@SettingsActivity, Models.needed(s))
+                }
+            })
             val st = text(12f, color = R.color.accent)
             refreshers += {
                 st.text = when {
                     Models.state.isNotEmpty() -> Models.state
                     Models.lastError != null && !Models.busy -> "Download failed: ${Models.lastError}"
+                    !s.onDevice -> "OFF · your server transcribes"
                     Models.needed(s).all { Models.has(this@SettingsActivity, it) } -> "READY · models downloaded"
                     else -> "Downloading soon…"
                 }
@@ -76,7 +89,7 @@ class SettingsActivity : Activity() {
                 }
             })
             addView(Switch(context).apply {
-                text = "Leave out quiet background voices (TV, people nearby)"
+                text = "Leave out far-away background voices (TV across the room)"
                 textSize = 14f
                 typeface = MONO
                 setTextColor(col(R.color.text))
@@ -138,7 +151,7 @@ class SettingsActivity : Activity() {
             row {
                 pill("Save", primary = true, weight = 1f) {
                     s.micSource = micSource
-                    s.vadThreshold = vad.text.toString().toFloatOrNull()?.coerceIn(0.1f, 0.9f) ?: 0.5f
+                    s.vadThreshold = vad.text.toString().toFloatOrNull()?.coerceIn(0.1f, 0.9f) ?: 0.35f
                     Toast.makeText(this@SettingsActivity, "Saved", Toast.LENGTH_SHORT).show()
                     if (ListenService.running) Toast.makeText(this@SettingsActivity,
                         "Microphone and voice detector changes apply to the next recording.", Toast.LENGTH_LONG).show()

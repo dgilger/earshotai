@@ -41,6 +41,8 @@ class MainActivity : Activity() {
     private lateinit var scope: Scope
     private lateinit var detailView: TextView
     private lateinit var callCard: LinearLayout
+    private lateinit var connectCard: LinearLayout
+    private var modeAtCreate = ""
     private lateinit var workView: TextView
     private lateinit var liveView: TextView
     private lateinit var listBox: LinearLayout
@@ -71,7 +73,12 @@ class MainActivity : Activity() {
         if (savedInstanceState == null) handlePairLink(intent)
 
         val root = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-        root.header("Earshot", if (Server.ready(settings)) "Transcripts on your server" else "On-device transcripts", action = "Settings") {
+        modeAtCreate = mode()
+        root.header("Earshot", when (modeAtCreate) {
+            "server" -> "Sends to your server · ${Server.normalize(settings.serverUrl).removePrefix("https://").removePrefix("http://")}"
+            "phone" -> "Transcribes on this phone"
+            else -> "No server connected yet"
+        }, action = "Settings") {
             startActivity(Intent(this, SettingsActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NO_USER_ACTION))
         }
 
@@ -85,6 +92,31 @@ class MainActivity : Activity() {
         scope = Scope(this)
         root.addView(scope, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
             .apply { marginStart = dp(24); marginEnd = dp(24); bottomMargin = dp(20) })
+
+        // Server first: until one is connected (or on-phone transcription is chosen), say how.
+        connectCard = root.card(R.color.accent) {
+            label("Connect your server")
+            text(14f) {
+                text = "Recordings are kept on this phone until a server is connected, then sent there."
+            }
+            space(6)
+            text(13f, color = R.color.muted) {
+                text = "On the server's web page, open Connect and scan the code with the phone camera. " +
+                    "Or run: sudo earshot pair"
+            }
+            space(10)
+            row {
+                pill("Enter by hand", primary = true) {
+                    startActivity(Intent(this@MainActivity, SettingsActivity::class.java))
+                }
+                pill("Use this phone instead") {
+                    settings.onDevice = true
+                    Models.ensure(this@MainActivity, Models.needed(settings))
+                    recreate()
+                }
+            }
+        }
+        connectCard.visibility = if (settings.waitingForServer) View.VISIBLE else View.GONE
 
         callCard = root.card(R.color.yellow) {
             label("In a call", R.color.yellow)
@@ -138,7 +170,10 @@ class MainActivity : Activity() {
                     } catch (e: Exception) {
                         "Could not connect: ${e.message}"
                     }
-                    ui.post { AlertDialog.Builder(this).setMessage(msg).setPositiveButton("OK", null).show() }
+                    ui.post {
+                        AlertDialog.Builder(this).setMessage(msg)
+                            .setPositiveButton("OK") { _, _ -> if (mode() != modeAtCreate) recreate() }.show()
+                    }
                 }.start()
             }
             .setNegativeButton("Cancel", null)
@@ -159,8 +194,18 @@ class MainActivity : Activity() {
         }
     }
 
+    /** "server", "phone" or "none": what transcribes recordings. */
+    private fun mode() = when {
+        Server.ready(settings) -> "server"
+        settings.onDevice -> "phone"
+        else -> "none"
+    }
+
     override fun onResume() {
         super.onResume()
+        if (mode() != modeAtCreate) { recreate(); return }   // connected or changed in Settings: new header
+        if (Server.ready(settings) && !ListenService.running && store.sessions().isNotEmpty())   // send what waited for a server
+            Thread({ Processor.drain(applicationContext, { ListenService.sessionId }) }, "drain").start()
         lastList = ""
         if (store.waiting().isNotEmpty()) Thread { Uploader.run(this) }.start()
         ui.post(tick)

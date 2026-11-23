@@ -136,10 +136,22 @@ object Speech {
 
         val speaking get() = vad.isSpeechDetected()
 
+        // The voice detector misses quiet, far voices. It gets a louder copy of the audio: the
+        // gain lifts the room's noise floor to about -50 dBFS (at most 18 dB). Saved audio is not changed.
+        private var floor = 0.003f
+        private var boosted = FloatArray(0)
+
         fun feed(block: FloatArray) {
             for (i in block.indices) ring[((total + i) % ring.size).toInt()] = block[i]
             total += block.size
-            vad.acceptWaveform(block)
+            var sum = 0.0
+            for (x in block) sum += x * x
+            val rms = kotlin.math.sqrt(sum / block.size).toFloat().coerceAtLeast(1e-5f)
+            floor = if (rms < floor) rms else floor * 1.01f   // falls at once, rises ~4 % a second
+            val gain = (0.003f / floor).coerceIn(1f, 8f)
+            if (boosted.size != block.size) boosted = FloatArray(block.size)
+            for (i in block.indices) boosted[i] = (block[i] * gain).coerceIn(-1f, 1f)
+            vad.acceptWaveform(boosted)
             drain()
             if (pendFrom >= 0 && !vad.isSpeechDetected() && total >= pendTo + RATE) emit(pendTo)
         }
@@ -268,7 +280,7 @@ object Speech {
         pieces += joined
 
         // 2c. Background voices (a TV, people at the next table) reach the mic much quieter than
-        // the conversation. Drop a speaker whose typical level is more than 14 dB below the
+        // the conversation. Drop a speaker whose typical level is more than 24 dB below the
         // loudest speaker's; pieces without a speaker are judged on their own level.
         if (skipBackground && pieces.size > 1) {
             fun rms(p: Piece): Double {
@@ -281,7 +293,7 @@ object Speech {
             val bySpeaker = pieces.indices.filter { pieces[it].speaker >= 0 }.groupBy { pieces[it].speaker }
                 .mapValues { (_, idx) -> median(idx.map { levels[it] }) }
             val ref = maxOf(bySpeaker.values.maxOrNull() ?: 0.0, median(levels))
-            val floor = ref * 0.2   // -14 dB
+            val floor = ref * 0.063   // -24 dB: a person 2 m away is still kept (-14 dB dropped them)
             val keep = pieces.indices.filter { i ->
                 val p = pieces[i]
                 val level = if (p.speaker >= 0) bySpeaker[p.speaker] ?: levels[i] else levels[i]
