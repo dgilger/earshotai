@@ -17,20 +17,22 @@ class Settings(context: Context) {
         get() = p.getBoolean("diarize", true)
         set(v) = p.edit().putBoolean("diarize", v).apply()
 
-    /** Leave out voices much quieter than the conversation (TV, people nearby). */
+    /** Leave out voices far quieter than the conversation (a TV across the room). Off by default:
+     *  it also dropped people a few steps away. New key, so the old default (on) is not kept. */
     var skipBackground: Boolean
-        get() = p.getBoolean("skip_background", true)
-        set(v) = p.edit().putBoolean("skip_background", v).apply()
+        get() = p.getBoolean("skip_background_v2", false)
+        set(v) = p.edit().putBoolean("skip_background_v2", v).apply()
 
     /** Start recording as soon as the app is opened (from the launcher or a gesture). */
     var autoStart: Boolean
         get() = p.getBoolean("auto_start", false)
         set(v) = p.edit().putBoolean("auto_start", v).apply()
 
-    /** Silero speech probability needed to start a segment. */
+    /** Silero speech probability needed to start a segment. Lower hears quieter, farther voices.
+     *  New key (was 0.5 under "vad_threshold"), so saved old values do not stay. */
     var vadThreshold: Float
-        get() = p.getFloat("vad_threshold", 0.5f)
-        set(v) = p.edit().putFloat("vad_threshold", v).apply()
+        get() = p.getFloat("vad_threshold_v2", 0.35f)
+        set(v) = p.edit().putFloat("vad_threshold_v2", v).apply()
 
     /** Android audio source: "mic" (normal recording, with auto gain), "voice" (speech
      *  recognition tuning, no gain control) or "raw" (unprocessed, where the phone supports it). */

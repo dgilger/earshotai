@@ -158,6 +158,7 @@ class Engine:
         self.state = "transcribing"
         segments, _info = self.whisper.transcribe(
             audio, language=s["language"] or None, beam_size=5, vad_filter=True,
+            vad_parameters={"threshold": 0.35},   # default 0.5 missed quiet voices a few steps away
             word_timestamps=True, condition_on_previous_text=False)
         words = []  # (start s, end s, text)
         for seg in segments:
@@ -217,7 +218,8 @@ class Engine:
 
     @staticmethod
     def _drop_quiet(audio: np.ndarray, lines: list) -> list:
-        """Leave out a speaker more than 14 dB quieter than the loudest one (TV, next table)."""
+        """Leave out a speaker more than 24 dB quieter than the loudest one (a TV across the room).
+        14 dB also dropped a person 1.5 m away talking normally."""
         if len(lines) < 2:
             return lines
 
@@ -231,7 +233,7 @@ class Engine:
             by.setdefault(ln[1], []).append(lv)
         med = {k: float(np.median(v)) for k, v in by.items()}
         ref = max(med.values())
-        keep = [ln for ln in lines if med[ln[1]] >= ref * 0.2]
+        keep = [ln for ln in lines if med[ln[1]] >= ref * 0.063]
         return keep or lines
 
     def run_job(self, j: dict) -> None:

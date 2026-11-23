@@ -76,7 +76,7 @@ class SettingsActivity : Activity() {
                 }
             })
             addView(Switch(context).apply {
-                text = "Leave out quiet background voices (TV, people nearby)"
+                text = "Leave out far-away background voices (TV across the room)"
                 textSize = 14f
                 typeface = MONO
                 setTextColor(col(R.color.text))
@@ -138,7 +138,7 @@ class SettingsActivity : Activity() {
             row {
                 pill("Save", primary = true, weight = 1f) {
                     s.micSource = micSource
-                    s.vadThreshold = vad.text.toString().toFloatOrNull()?.coerceIn(0.1f, 0.9f) ?: 0.5f
+                    s.vadThreshold = vad.text.toString().toFloatOrNull()?.coerceIn(0.1f, 0.9f) ?: 0.35f
                     Toast.makeText(this@SettingsActivity, "Saved", Toast.LENGTH_SHORT).show()
                     if (ListenService.running) Toast.makeText(this@SettingsActivity,
                         "Microphone and voice detector changes apply to the next recording.", Toast.LENGTH_LONG).show()

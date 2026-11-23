@@ -21,8 +21,9 @@ leaves the phone and is deleted once its text is saved.
   the last part and saves one `.txt` file for the whole recording, named `Earshot 2026-11-23 16.52.txt`
   (calls: `Earshot call …`). Speaker labels restart after each blank line.
 - Tap a transcript in the list to read it, or **Share** it to any app.
-- **Leave out quiet background voices** (Settings, on by default): drops speech much quieter than the main
-  speakers, such as a TV or people at the next table. Turn it off if a quiet speaker goes missing.
+- **Leave out far-away background voices** (Settings, off by default): drops speech more than 24 dB quieter
+  than the main speakers, such as a TV across the room. People a few steps away are kept.
+- The voice detector hears a boosted copy of the audio (up to 18 dB), so quiet, farther voices are not missed.
 - No live (word-by-word) transcription: earlier tests were unreliable, and speaker labels need whole parts.
 
 ### Your own server (better transcripts)
