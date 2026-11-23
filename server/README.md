@@ -48,11 +48,12 @@ Needs: 4 GB memory (8 GB+ better), 8 GB free disk. A GPU is optional (about 10×
 The phone needs an https address on the internet. The installer offers two free ways. Neither
 needs router changes or port forwarding, and the phone needs no extra app:
 
-| | Cloudflare Tunnel | Tailscale Funnel |
+| | Tailscale Funnel (recommended) | Cloudflare Tunnel |
 |---|---|---|
-| Address | `https://earshot.your-domain.com` | `https://earshot.<name>.ts.net` |
-| Needs | free Cloudflare account + a domain (~$10/year) | free Tailscale account |
-| Setup | paste one token from the Cloudflare dashboard | sign in once, click Enable |
+| Address | `https://earshot.<name>.ts.net` | `https://earshot.your-domain.com` |
+| Needs | free Tailscale account | free Cloudflare account + a domain (~$10/year) |
+| Setup | sign in once, click Enable | paste one token from the Cloudflare dashboard |
+| Privacy | encryption ends on your server | Cloudflare decrypts traffic on its servers, so it could see recordings |
 
 Every request needs your access token. Set it up later with `sudo earshot remote`.
 Without either, the phone reaches the server on your home Wi-Fi only.
@@ -76,6 +77,30 @@ Portal → **Connect** shows your MCP address: `https://<server>/mcp/<token>`.
 - **Other clients**: `https://<server>/mcp` with the header `Authorization: Bearer <token>`.
 
 Tools (read only): `list_transcripts`, `search_transcripts`, `get_transcript`.
+The MCP address has its own read-only token, so it can't be used to upload, change or delete.
+
+## Security
+
+What protects your transcripts:
+- **Tokens.** Every request needs a random 192-bit token. The phone and the portal use the full token.
+  AI tools get a separate read-only token. Both are in `/var/lib/earshot` (readable only by the service).
+  `sudo earshot new-token` replaces both.
+- **Wrong-token limit.** After 30 wrong tokens in 10 minutes from one address, more tries are refused
+  (the right token always works).
+- **Service.** Runs as its own user `earshot`, with a read-only system, no access to home folders,
+  and private files (`umask 077`). Data folder is `700`.
+- **Web pages** send strict security headers (no framing, no outside scripts). Uploads have size limits.
+- **Audio** is deleted after transcription (unless you turn on "Keep audio files").
+- The installer log does not keep GitHub or Cloudflare tokens.
+
+What to know:
+- Anyone with the full token can read and delete everything. Treat it like a password. The QR code
+  on the Connect page holds it, so don't show that page to others.
+- With **Cloudflare Tunnel**, Cloudflare decrypts traffic at its edge. Use **Tailscale Funnel** if that matters.
+- On **home Wi-Fi with `http://`**, the token and audio travel unencrypted on your network.
+- Transcripts are stored unencrypted on the server disk. Use full-disk encryption (e.g. Proxmox/LUKS)
+  if someone could take the disk.
+- The AI tool you connect (for example Claude) stores the MCP address and reads transcripts you ask about.
 
 ## Everyday commands
 

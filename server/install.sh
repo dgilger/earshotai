@@ -75,8 +75,9 @@ choose() {  # choose "prompt" n -> echo number 1..n
 }
 run() {   # run "what" command… : runs quietly into the log, shows a spinner
   local what=$1; shift
-  echo "=== $what: $*" >> "$LOG"
-  "$@" >> "$LOG" 2>&1 &
+  echo "=== $what ($1)" >> "$LOG"   # not the arguments: they can hold a token
+  # Output goes to the log with tokens blanked out (GitHub tokens in URLs, Cloudflare tunnel tokens).
+  ( "$@" 2>&1 | sed -E 's#(https://)[^/@ ]+@#\1***@#g; s/eyJ[A-Za-z0-9_=.-]{20,}/eyJ***/g' >> "$LOG"; exit "${PIPESTATUS[0]}" ) &
   local pid=$! i=0 s='|/-\'
   while kill -0 $pid 2>/dev/null; do
     [ -t 1 ] && printf "\r  %s %s " "${s:i++%4:1}" "$what"
@@ -281,7 +282,7 @@ configure() {
   id $SVC_USER > /dev/null 2>&1 || useradd --system --home-dir "$DATA_DIR" --shell /usr/sbin/nologin $SVC_USER
   mkdir -p "$DATA_DIR" "$CONF_DIR"
   chown -R $SVC_USER: "$DATA_DIR"
-  chmod 750 "$DATA_DIR"
+  chmod 700 "$DATA_DIR"
   ok "Earshot runs as its own user '$SVC_USER'. Transcripts are kept in $DATA_DIR."
 
   local libs=""
@@ -353,10 +354,16 @@ ExecStart=$APP_DIR/venv/bin/python -m earshot.main
 Restart=always
 RestartSec=5
 Nice=5
-ProtectSystem=full
+UMask=0077
+ProtectSystem=strict
 ProtectHome=true
 PrivateTmp=true
 NoNewPrivileges=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
 ReadWritePaths=$DATA_DIR
 
 [Install]
@@ -515,13 +522,15 @@ setup_remote() {
   say "changes to your router. Only devices with your access token can use Earshot."
   [ -n "$cur" ] && info "Now set to: $cur"
   echo
-  say "  1) Cloudflare Tunnel  - best if you have a domain (or will buy one). Address: https://earshot.your-domain.com"
-  say "  2) Tailscale Funnel   - no domain needed. Address: https://earshot.<name>.ts.net"
+  say "  1) Tailscale Funnel   - recommended. No domain needed, and the encryption ends on THIS computer,"
+  say "                          so nobody in between can read your recordings. Address: https://earshot.<name>.ts.net"
+  say "  2) Cloudflare Tunnel  - if you have a domain. Note: Cloudflare decrypts the traffic on its servers"
+  say "                          before passing it on, so Cloudflare could technically see recordings and transcripts."
   say "  3) Not now            - home Wi-Fi only (you can do this later: sudo earshot remote)"
   echo
   case $(choose "Type 1, 2 or 3:" 3) in
-    1) remote_cloudflare ;;
-    2) remote_tailscale ;;
+    1) remote_tailscale ;;
+    2) remote_cloudflare ;;
     3) [ -z "$cur" ] && set_public_url "http://$(lan_ip):$PORT"
        warn "Home Wi-Fi only. Tip: give this computer a fixed IP address in your router, so the address stays the same." ;;
   esac

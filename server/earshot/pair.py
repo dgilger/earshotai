@@ -44,9 +44,9 @@ def phone() -> None:
 
 
 def ai() -> None:
-    url, token = address(), config.token()
+    url, token = address(), config.mcp_token()   # read-only: AI tools can't change or delete anything
     print(f"""
-  MCP address (keep it private, it holds your token):
+  MCP address (keep it private; it holds a read-only token):
      {url}/mcp/{token}
 
   Claude (web, desktop, phone app):

@@ -34,7 +34,8 @@ print(f"  Free disk:   {s[\"disk_free_gb\"]} GB")' 2>/dev/null
   new-token)
     read -r -p "Make a new access token? The phone and AI tools must be connected again. [y/N] " a
     [[ "${a,,}" == y* ]] || exit 0
-    py -c "from earshot import config; print('New token:', config.new_token())" ;;
+    py -c "from earshot import config; print('New token:', config.new_token())"
+    echo "The AI tools (MCP) address changed too. Show it: earshot pair ai" ;;
   uninstall) bash "$APP_DIR/server/install.sh" --uninstall ;;
   *)
     cat <<'H'

@@ -89,7 +89,7 @@
       <h2>AI tools (MCP)</h2>
       <div class="panel">
         <p style="margin-top:0">AI tools can list, search and read your transcripts. They cannot change or delete anything.</p>
-        <p class="muted small">Your MCP address (it holds your token, so keep it private):</p>
+        <p class="muted small">Your MCP address. It holds a read-only token: keep it private, but it cannot change or delete anything.</p>
         <div class="copy"><code id="mUrl"></code><button data-copy="mUrl">Copy</button></div>
         <div class="tabs" id="aiTabs">
           <button data-tab="claude" class="on">Claude (web, desktop, phone)</button>
@@ -111,7 +111,7 @@
         </div>
         <div data-pane="other" class="hidden">
           <p class="small">Any MCP client that speaks "Streamable HTTP": use the address above. Or use
-            <code id="mBase"></code> with the header <code>Authorization: Bearer &lt;token&gt;</code>.</p>
+            <code id="mBase"></code> with the header <code>Authorization: Bearer</code> and the token at the end of the MCP address.</p>
           <p class="small muted">Tools: <code>list_transcripts</code>, <code>search_transcripts</code>, <code>get_transcript</code>.</p>
         </div>
       </div>
