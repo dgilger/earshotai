@@ -238,7 +238,20 @@ detect_gpu() {
 # ---- 4. code ----------------------------------------------------------------------------------
 get_code() {
   step "Download Earshot"
+  local here; here=$(cd "$(dirname "$(readlink -f "$0")")/.." 2>/dev/null && pwd)
+  local from_copy=""
+  if [ -n "$here" ] && [ "$here" != "$APP_DIR" ] && [ -f "$here/server/earshot/main.py" ] \
+     && git -C "$here" rev-parse HEAD > /dev/null 2>&1; then
+    from_copy=$here
+  fi
   if [ -d "$APP_DIR/.git" ]; then
+    if [ -n "$from_copy" ]; then   # started from a downloaded copy: take its version
+      say "Earshot is already here ($APP_DIR). Updating it from $from_copy…"
+      run "Updating the code" git -C "$APP_DIR" pull -q --ff-only "$from_copy" HEAD \
+        && ok "Code updated from $from_copy" \
+        || warn "Could not update the code (local changes?). Using the version that is here."
+      return
+    fi
     say "Earshot is already here ($APP_DIR). Getting the newest version…"
     run "Updating the code" git -C "$APP_DIR" pull --ff-only origin "$BRANCH" \
       && ok "Code is up to date" \
@@ -247,8 +260,7 @@ get_code() {
   fi
   rm -rf "$APP_DIR.tmp"
   # Started from a downloaded copy (git clone …): use that copy, no second download needed.
-  local here; here=$(cd "$(dirname "$(readlink -f "$0")")/.." 2>/dev/null && pwd)
-  if [ -n "$here" ] && [ -f "$here/server/earshot/main.py" ] && git -C "$here" rev-parse HEAD > /dev/null 2>&1; then
+  if [ -n "$from_copy" ]; then
     if run "Copying Earshot from $here" git clone -q "$here" "$APP_DIR.tmp"; then
       git -C "$APP_DIR.tmp" remote set-url origin "$REPO_URL"
       mv "$APP_DIR.tmp" "$APP_DIR"
@@ -368,8 +380,7 @@ download_models() {
 }
 
 # ---- 8. service -------------------------------------------------------------------------------
-install_service() {
-  step "Start Earshot"
+write_service() {
   cat > /etc/systemd/system/earshot.service <<EOF
 [Unit]
 Description=Earshot transcription server
@@ -401,6 +412,11 @@ WantedBy=multi-user.target
 EOF
   install -m 755 "$APP_DIR/server/earshot-cli.sh" /usr/local/bin/earshot
   systemctl daemon-reload
+}
+
+install_service() {
+  step "Start Earshot"
+  write_service
   systemctl enable earshot >> "$LOG" 2>&1
   systemctl restart earshot
   local i
@@ -621,6 +637,7 @@ case "${1:-}" in
     need_root "$@"; TOTAL_STEPS=4
     GPU=$(grep -q LD_LIBRARY_PATH "$ENV_FILE" 2>/dev/null && echo cuda || echo cpu)
     get_code; install_python; download_models
+    chmod 700 "$DATA_DIR"; write_service
     step "Restart"; systemctl restart earshot; sleep 3
     systemctl is-active --quiet earshot && ok "Earshot is running the new version" || die "Earshot did not start." "sudo journalctl -u earshot -n 50"
     exit 0 ;;
