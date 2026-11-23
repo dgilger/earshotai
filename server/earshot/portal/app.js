@@ -202,6 +202,12 @@ $('rotate').onclick = async () => {
   await api('/api/token', { method: 'POST' });
   location.hash = '#/connect';
 };
+$('mRotate').onclick = async () => {
+  if (!confirm('Make a new MCP address? AI tools that use the old address stop working until you give them the new one.')) return;
+  await api('/api/mcp-token', { method: 'POST' });
+  await showConnect();
+  $('mRotated').textContent = 'Done. Copy the new address above into your AI tools.';
+};
 $('logout').onclick = async () => { await api('/api/logout', { method: 'POST' }); showLogin(); };
 
 // ---- start ----

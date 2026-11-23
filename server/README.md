@@ -78,6 +78,7 @@ Portal → **Connect** shows your MCP address: `https://<server>/mcp/<token>`.
 
 Tools (read only): `list_transcripts`, `search_transcripts`, `get_transcript`.
 The MCP address has its own read-only token, so it can't be used to upload, change or delete.
+If the MCP address gets out, open Connect in the portal and click **Make a new MCP address**. The old address stops working at once; the phone is not affected.
 
 ## Security
 
