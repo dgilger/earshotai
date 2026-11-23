@@ -6,10 +6,12 @@ import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.RectF
 import android.view.View
+import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.hypot
 import kotlin.math.roundToInt
 import kotlin.math.sin
+import kotlin.math.sqrt
 
 /**
  * The record control: a softly dithered orb (grey when ready, red when recording) inside a thin
@@ -39,14 +41,41 @@ class RecordDial(ctx: Context) : View(ctx) {
         contentDescription = "Record"
     }
 
+    // Stop the spin clock while hidden, so the ball does not jump when it shows again.
+    override fun onVisibilityAggregated(isVisible: Boolean) {
+        super.onVisibilityAggregated(isVisible)
+        lastFrame = 0L
+        if (isVisible) invalidate()
+    }
+
+    /** Spin angle (radians) at [now] ms: one slow turn every 9 s, a bit faster while recording. */
+    private var spin = 0.6
+    private var lastFrame = 0L
+    private val still = android.provider.Settings.Global.getFloat(
+        ctx.contentResolver, android.provider.Settings.Global.ANIMATOR_DURATION_SCALE, 1f) == 0f
+
     private fun makeOrb(r: Int): Bitmap {
         val n = (2 * r / cell).coerceAtLeast(2)
         val (cs, ps) = if (recording)
             intArrayOf(0xFFFF7A70.toInt(), red, 0xFF5A1410.toInt(), bg) to floatArrayOf(0f, 0.35f, 0.8f, 1f)
         else intArrayOf(0xFFEDEDED.toInt(), 0xFF8A8F99.toInt(), 0xFF26282E.toInt(), bg) to floatArrayOf(0f, 0.4f, 0.82f, 1f)
-        return Dither.bitmap(n, n, cs, ps, 0, mask = { x, y -> hypot(x - 0.5f, y - 0.5f) <= 0.5f }) { x, y ->
-            hypot(x - 0.5f + 0.125f, y - 0.5f + 0.15f) / 0.625f
-        }
+        val a = spin.toFloat()
+        return Dither.bitmap(n, n, cs, ps, 0, mask = { x, y -> hypot(x - 0.5f, y - 0.5f) <= 0.5f }) { x, y -> shade(x, y, a) }
+    }
+
+    /**
+     * Darkness 0..1 of the ball at (x, y) in 0..1, turned by [a] around the vertical axis: the
+     * still orb (light spot upper left, dark rim) plus soft bands on the surface that move as
+     * it turns, so it reads as a slowly spinning ball. Same maths as the portal's orb.js.
+     */
+    private fun shade(x: Float, y: Float, a: Float): Float {
+        val sx = x * 2 - 1
+        val sy = y * 2 - 1
+        val z = sqrt((1 - sx * sx - sy * sy).coerceAtLeast(0f))
+        var t = hypot(x - 0.375f, y - 0.35f) / 0.625f
+        val lon = atan2(sx, z) + a
+        t += 0.13f * sin(5 * lon) * sqrt((1 - sy * sy).coerceAtLeast(0f)) * z
+        return t
     }
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
@@ -74,6 +103,12 @@ class RecordDial(ctx: Context) : View(ctx) {
         }
         // Orb.
         val r = (outer * 0.72f).toInt()
+        val now = android.os.SystemClock.uptimeMillis()
+        if (!still) {
+            if (lastFrame != 0L) spin += (now - lastFrame).coerceAtMost(200) * 2 * Math.PI / (if (recording) 6000.0 else 9000.0)
+            lastFrame = now
+            orb = null
+        }
         val o = orb ?: makeOrb(r).also { orb = it }
         canvas.drawBitmap(o, null, RectF(cx - r, cy - r, cx + r, cy + r), Dither.sharp)
         // Label.
@@ -82,8 +117,8 @@ class RecordDial(ctx: Context) : View(ctx) {
         label.letterSpacing = 0.1f
         label.color = 0xFF000000.toInt()
         canvas.drawText(if (recording) "STOP" else "REC", cx, cy + context.dpf(8f), label)
-        // Keep animating while on screen.
-        if (recording) postInvalidateDelayed(80)
+        // Keep turning while on screen (about 15 frames a second is plenty for a dither).
+        if (!still || recording) postInvalidateDelayed(66)
     }
 }
 

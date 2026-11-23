@@ -10,15 +10,18 @@
 <body>
 <div class="wrap center">
   <div class="login">
-    <div class="brand" style="margin-bottom:24px"><span class="dot ok"></span>earshot</div>
+    <canvas class="orb big" data-cells="56" aria-hidden="true"></canvas>
+    <div class="brand-name">Earshot</div>
+    <div class="caption">Pair your phone</div>
     <h1>Connect the app</h1>
     <p class="muted">Tap the button. The Earshot app opens and connects to this server.</p>
-    <a class="btn" id="go" style="display:block;text-align:center;background:var(--accent);color:#000;border-color:var(--accent);font-weight:700;padding:14px">Connect Earshot</a>
+    <a class="btn primary block" id="go">Connect Earshot</a>
     <p class="muted small" style="margin-top:20px">Nothing happens? Install the Earshot app first, then scan the code again.
       Or open the app, go to Settings → Server and paste the address and token by hand.</p>
     <p class="err" id="err"></p>
   </div>
 </div>
+<script src="/static/orb.js"></script>
 <script src="/static/pair.js"></script>
 </body>
 </html>
