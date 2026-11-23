@@ -25,6 +25,7 @@ MODELS = DATA / "models"
 AUDIO = DATA / "audio"
 DB_PATH = DATA / "earshot.db"
 TOKEN_FILE = DATA / "token"
+MCP_TOKEN_FILE = DATA / "mcp_token"   # read-only token for AI tools
 SETTINGS_FILE = DATA / "settings.json"
 
 DEFAULTS = {
@@ -65,32 +66,51 @@ def save(changes: dict) -> dict:
         return s
 
 
+def _read_or_make(path: Path) -> str:
+    try:
+        t = path.read_text().strip()
+        if t:
+            return t
+    except FileNotFoundError:
+        pass
+    return _write_token(path)
+
+
 def token() -> str:
-    """The access token for the phone, the portal and AI tools. Made on first use."""
+    """The full-access token for the phone and the portal. Made on first use."""
     with _lock:
-        try:
-            t = TOKEN_FILE.read_text().strip()
-            if t:
-                return t
-        except FileNotFoundError:
-            pass
-        return _write_token()
+        return _read_or_make(TOKEN_FILE)
+
+
+def mcp_token() -> str:
+    """A separate read-only token for AI tools (MCP). A leaked MCP address can only read transcripts."""
+    with _lock:
+        return _read_or_make(MCP_TOKEN_FILE)
 
 
 def new_token() -> str:
+    """New tokens for everything (phone, portal and AI tools). Returns the new full-access token."""
     with _lock:
-        return _write_token()
+        _write_token(MCP_TOKEN_FILE)
+        return _write_token(TOKEN_FILE)
 
 
-def _write_token() -> str:
+def _write_token(path: Path) -> str:
     ensure_dirs()
-    t = secrets.token_urlsafe(24)
-    tmp = TOKEN_FILE.with_suffix(".tmp")
-    tmp.write_text(t + "\n")
-    os.chmod(tmp, 0o600)
-    tmp.replace(TOKEN_FILE)
+    t = secrets.token_urlsafe(24)   # 192 random bits
+    tmp = path.with_suffix(".tmp")
+    fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)   # never readable by others, not even briefly
+    with os.fdopen(fd, "w") as f:
+        f.write(t + "\n")
+    tmp.replace(path)
     return t
 
 
 def check_token(given: str | None) -> bool:
-    return bool(given) and secrets.compare_digest(given.strip(), token())
+    return bool(given) and secrets.compare_digest(given.strip().encode(), token().encode())
+
+
+def check_mcp_token(given: str | None) -> bool:
+    """AI tools may use the read-only MCP token or the full token."""
+    return bool(given) and (secrets.compare_digest(given.strip().encode(), mcp_token().encode())
+                            or check_token(given))
