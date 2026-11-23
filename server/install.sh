@@ -442,8 +442,46 @@ ReadWritePaths=$DATA_DIR
 [Install]
 WantedBy=multi-user.target
 EOF
+  # Updates from the web portal. The portal (user earshot) can only write a request file;
+  # this root unit does the work. It never runs anything the request file says, it only reads
+  # "check" or "update".
+  cat > /etc/systemd/system/earshot-updater@.service <<EOF
+[Unit]
+Description=Earshot update (%i)
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/bin/bash $APP_DIR/server/earshot-updater.sh %i
+TimeoutStartSec=1h
+EOF
+  cat > /etc/systemd/system/earshot-updater.path <<EOF
+[Unit]
+Description=Earshot: watch for update requests from the web portal
+
+[Path]
+PathExists=$DATA_DIR/update-request
+Unit=earshot-updater@request.service
+
+[Install]
+WantedBy=multi-user.target
+EOF
+  cat > /etc/systemd/system/earshot-updater.timer <<EOF
+[Unit]
+Description=Earshot: look for a new version once a day
+
+[Timer]
+OnBootSec=10min
+OnUnitActiveSec=1d
+RandomizedDelaySec=1h
+Unit=earshot-updater@check.service
+
+[Install]
+WantedBy=timers.target
+EOF
   install -m 755 "$APP_DIR/server/earshot-cli.sh" /usr/local/bin/earshot
   systemctl daemon-reload
+  systemctl enable --now earshot-updater.path earshot-updater.timer >> "$LOG" 2>&1 || true
 }
 
 install_service() {
@@ -646,8 +684,9 @@ uninstall() {
   need_root "$@"
   echo "This removes the Earshot service and programs."
   ask "Continue?" n || exit 0
-  systemctl disable --now earshot 2>/dev/null
-  rm -f /etc/systemd/system/earshot.service /usr/local/bin/earshot
+  systemctl disable --now earshot earshot-updater.path earshot-updater.timer 2>/dev/null
+  rm -f /etc/systemd/system/earshot.service /etc/systemd/system/earshot-updater@.service \
+    /etc/systemd/system/earshot-updater.path /etc/systemd/system/earshot-updater.timer /usr/local/bin/earshot
   systemctl daemon-reload
   rm -rf "$APP_DIR" /opt/earshot-python
   ok "Programs removed."

@@ -39,6 +39,7 @@ function route() {
   if (h.startsWith('/r/')) { showRec(decodeURIComponent(h.slice(3))); $('v-rec').classList.remove('hidden'); }
   else if (h === '/connect') { nav = 'connect'; showConnect(); $('v-connect').classList.remove('hidden'); }
   else if (h === '/server') { nav = 'server'; showServer(); $('v-server').classList.remove('hidden'); }
+  else if (h === '/update') { nav = 'update'; showUpdate(); $('v-update').classList.remove('hidden'); }
   else { loadList(); $('v-list').classList.remove('hidden'); }
   document.querySelectorAll('nav a').forEach((a) => a.classList.toggle('on', a.dataset.nav === nav));
 }
@@ -208,6 +209,58 @@ $('mRotate').onclick = async () => {
   await showConnect();
   $('mRotated').textContent = 'Done. Copy the new address above into your AI tools.';
 };
+// ---- updates ----
+let upd = null, updTimer = null, sawUpdating = false;
+function ago(sec) {
+  if (!sec) return 'never';
+  const m = Math.round((Date.now() / 1000 - sec) / 60);
+  return m < 1 ? 'just now' : m < 60 ? `${m} min ago` : m < 1440 ? `${Math.round(m / 60)} h ago` : `${Math.round(m / 1440)} days ago`;
+}
+async function loadUpdate() {
+  try { upd = await api('/api/update'); } catch (_) { return null; }   // the server restarts during an update
+  $('updBadge').classList.toggle('hidden', !upd.available);
+  $('navUpdate').title = upd.available ? 'A new version is ready' : '';
+  return upd;
+}
+function drawUpdate() {
+  const u = upd;
+  if (!u) { $('uMsg').textContent = 'Earshot is restarting with the new version…'; return; }
+  const busy = u.pending || u.state === 'updating';
+  $('uSetup').classList.toggle('hidden', u.installed);
+  $('uCur').textContent = u.current || u.version || '…';
+  $('uLatest').textContent = u.latest || '…';
+  $('uChecked').textContent = u.pending ? 'checking…' : ago(u.checked);
+  $('uMsg').textContent = !u.installed ? ''
+    : u.state === 'updating' ? 'Updating. This takes 1–5 minutes. Earshot restarts at the end; this page reloads by itself.'
+    : u.pending ? 'Asking the server…'
+    : u.state === 'error' ? u.message
+    : u.available ? `A new version is ready: ${u.notes.length} ${u.notes.length === 1 ? 'change' : 'changes'}. Your transcripts and settings stay.`
+    : u.state === 'unknown' ? 'Not checked yet.' : 'Earshot is up to date.';
+  $('uGo').classList.toggle('hidden', !u.available || busy || !u.installed);
+  $('uCheck').disabled = busy || !u.installed;
+  $('uNotesBox').classList.toggle('hidden', !u.notes.length);
+  $('uNotes').innerHTML = u.notes.map((n) => `<li><span class="d">${esc(n.date)}</span><span>${esc(n.text)}</span></li>`).join('');
+  $('uLogBox').classList.toggle('hidden', !u.log.length);
+  $('uLog').textContent = u.log.join('\n');
+}
+async function showUpdate() {
+  clearTimeout(updTimer);
+  await loadUpdate();
+  drawUpdate();
+  const busy = !upd || upd.pending || upd.state === 'updating';
+  if (busy) sawUpdating = sawUpdating || !upd || upd.state === 'updating';
+  if (sawUpdating && upd && upd.state === 'done') { sawUpdating = false; setTimeout(() => location.reload(), 1500); return; }
+  if (busy && location.hash === '#/update') updTimer = setTimeout(showUpdate, 2000);
+}
+$('uCheck').onclick = async () => { await api('/api/update', { method: 'POST', json: { action: 'check' } }); showUpdate(); };
+$('uGo').onclick = async () => {
+  if (!confirm('Update Earshot now? It restarts at the end (about 1–5 minutes). Recordings sent meanwhile wait on the phone.')) return;
+  sawUpdating = true;
+  await api('/api/update', { method: 'POST', json: { action: 'update' } });
+  showUpdate();
+};
+setInterval(() => { if (!$('app').classList.contains('hidden')) loadUpdate(); }, 30 * 60 * 1000);
+
 $('logout').onclick = async () => { await api('/api/logout', { method: 'POST' }); showLogin(); };
 
 // ---- start ----
@@ -216,6 +269,7 @@ async function start() {
   $('login').classList.add('hidden');
   $('app').classList.remove('hidden');
   route();
+  loadUpdate();
 }
 setInterval(() => { if (!$('app').classList.contains('hidden')) poll(); }, 5000);
 start();
