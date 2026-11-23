@@ -9,7 +9,7 @@ if [ "$(id -u)" -ne 0 ]; then
   echo "Run this as root (or with sudo)."; exit 1
 fi
 
-py() { runuser -u earshot -- env $(grep -v '^#' "$ENV_FILE" | xargs) PYTHONPATH="$APP_DIR/server" "$APP_DIR/venv/bin/python" "$@"; }
+py() { (cd / && runuser -u earshot -- env HOME=/var/lib/earshot $(grep -v '^#' "$ENV_FILE" | xargs) PYTHONPATH="$APP_DIR/server" "$APP_DIR/venv/bin/python" "$@"); }
 
 case "${1:-help}" in
   status)
