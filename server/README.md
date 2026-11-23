@@ -110,7 +110,7 @@ sudo earshot status      is it running, what is it doing
 sudo earshot token       show the access token (to sign in to the portal)
 sudo earshot pair        phone QR code and AI address again
 sudo earshot remote      set up access from outside your home
-sudo earshot update      newest version, then restart
+sudo earshot update      newest version from GitHub, then restart
 sudo earshot logs        follow the log
 sudo earshot new-token   new token (phone and AI tools must connect again)
 sudo earshot uninstall   remove (asks before deleting transcripts)

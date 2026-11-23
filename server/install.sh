@@ -252,10 +252,27 @@ get_code() {
         || warn "Could not update the code (local changes?). Using the version that is here."
       return
     fi
-    say "Earshot is already here ($APP_DIR). Getting the newest version…"
-    run "Updating the code" git -C "$APP_DIR" pull --ff-only origin "$BRANCH" \
-      && ok "Code is up to date" \
-      || warn "Could not update the code (no internet, or local changes). Using the version that is here."
+    say "Earshot is already here ($APP_DIR). Getting the newest version from GitHub…"
+    if GIT_TERMINAL_PROMPT=0 run "Updating the code" git -C "$APP_DIR" pull -q --ff-only origin "$BRANCH"; then
+      ok "Code is up to date ($(git -C "$APP_DIR" log -1 --format='%h %cs'))"
+      return
+    fi
+    # A private repository needs a token. Use the saved one, or ask once and save it.
+    local tok=""
+    [ -s "$TOKEN_FILE_GH" ] && tok=$(cat "$TOKEN_FILE_GH")
+    if [ -z "$tok" ]; then
+      warn "GitHub did not give the code. If the project is private, it needs a GitHub access token."
+      ask_github_token
+      tok=$GH_TOKEN
+    fi
+    if [ -n "$tok" ] && GIT_TERMINAL_PROMPT=0 run "Updating the code (with your GitHub token)" \
+         git -C "$APP_DIR" pull -q --ff-only "${REPO_URL/https:\/\//https:\/\/x-access-token:$tok@}" "$BRANCH"; then
+      save_github_token "$tok"
+      ok "Code is up to date ($(git -C "$APP_DIR" log -1 --format='%h %cs'))"
+    else
+      warn "Could not update the code (no internet, wrong token, or local changes). Using the version that is here."
+      [ -s "$TOKEN_FILE_GH" ] && say "To type a new GitHub token: sudo rm $TOKEN_FILE_GH, then run: sudo earshot update"
+    fi
     return
   fi
   rm -rf "$APP_DIR.tmp"
@@ -274,20 +291,35 @@ get_code() {
     return
   fi
   warn "Could not download $REPO_URL"
-  say "If the project is private on GitHub, you need a GitHub access token:"
-  say "  1. Open https://github.com/settings/personal-access-tokens/new"
-  say "  2. Name: earshot-server.  Repository access: Only select repositories → the Earshot repository."
-  say "  3. Permissions → Contents: Read-only.  Click Generate token and copy it."
-  echo
-  local tok
-  read -r -s -p "  Paste the token here (it does not show while you type), or press Enter to stop: " tok < $TTY; echo
+  ask_github_token
+  local tok=$GH_TOKEN
   [ -n "$tok" ] || die "No code downloaded." "Check the address $REPO_URL in a browser."
   local authed=${REPO_URL/https:\/\//https:\/\/x-access-token:$tok@}
   run "Downloading from GitHub" git clone --depth 1 -b "$BRANCH" "$authed" "$APP_DIR.tmp" \
     || die "The download failed with this token." "Check that the token has access to the repository and 'Contents: Read'."
-  git -C "$APP_DIR.tmp" remote set-url origin "$REPO_URL"   # don't keep the token on disk
+  git -C "$APP_DIR.tmp" remote set-url origin "$REPO_URL"   # the token is not kept in the code folder
   mv "$APP_DIR.tmp" "$APP_DIR"
+  save_github_token "$tok"
   ok "Downloaded to $APP_DIR"
+}
+
+# A GitHub token is needed only while the project is private. Asked once, saved for 'earshot update'.
+TOKEN_FILE_GH=$CONF_DIR/github_token
+ask_github_token() {
+  GH_TOKEN=""
+  say "To get the code from a private GitHub project, make a GitHub access token:"
+  say "  1. Open https://github.com/settings/personal-access-tokens/new"
+  say "  2. Name: earshot-server.  Repository access: Only select repositories → the Earshot repository."
+  say "  3. Permissions → Contents: Read-only.  Click Generate token and copy it."
+  echo
+  read -r -s -p "  Paste the token here (it does not show while you type), or press Enter to skip: " GH_TOKEN < $TTY; echo
+  GH_TOKEN=$(echo "$GH_TOKEN" | tr -d '[:space:]')
+}
+save_github_token() {
+  [ -n "$1" ] || return 0
+  mkdir -p "$CONF_DIR"
+  ( umask 077; printf '%s\n' "$1" > "$TOKEN_FILE_GH" )
+  say "Saved the GitHub token in $TOKEN_FILE_GH (only root can read it), so 'earshot update' works next time."
 }
 
 # ---- 5. Python --------------------------------------------------------------------------------
