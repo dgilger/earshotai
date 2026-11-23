@@ -12,7 +12,9 @@
   <!-- Sign in -->
   <section id="login" class="center hidden">
     <form class="login" id="loginForm">
-      <div class="brand" style="margin-bottom:24px"><span class="dot ok"></span>earshot</div>
+      <canvas class="orb big" data-cells="56" aria-hidden="true"></canvas>
+      <div class="brand-name">Earshot</div>
+      <div class="caption">Your own transcription server</div>
       <h1>Sign in</h1>
       <p class="muted small">Type the access token. To see it, run this on the server:<br><code>sudo earshot token</code></p>
       <input type="password" id="tokenIn" placeholder="Access token" autocomplete="current-password" autofocus>
@@ -23,17 +25,21 @@
 
   <section id="app" class="hidden">
     <header class="top">
-      <a class="brand" href="#/"><span class="dot" id="dot"></span>earshot</a>
+      <a class="brand" href="#/"><canvas class="orb" data-cells="20" aria-hidden="true"></canvas>
+        <span><span class="brand-name">Earshot</span><span class="caption"><span class="dot" id="dot"></span><span id="stateLine">…</span></span></span></a>
       <nav>
         <a href="#/" data-nav="list">Transcripts</a>
         <a href="#/connect" data-nav="connect">Connect</a>
         <a href="#/server" data-nav="server">Server</a>
       </nav>
-      <span class="muted small mono" id="stateLine"></span>
     </header>
 
     <!-- Transcripts -->
     <div id="v-list" class="view">
+      <div class="pulse">
+        <canvas class="wave" id="wave" aria-hidden="true"></canvas>
+        <div class="pulse-text"><span class="label">Server</span><span id="waveText">Ready</span></div>
+      </div>
       <div class="row" style="margin-bottom:16px">
         <input type="search" id="q" class="grow" placeholder="Search all transcripts">
       </div>
@@ -154,6 +160,8 @@
     </div>
   </section>
 </div>
+<script src="/static/orb.js"></script>
+<script src="/static/wave.js"></script>
 <script src="/static/app.js"></script>
 </body>
 </html>

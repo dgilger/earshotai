@@ -53,19 +53,27 @@ async function poll() {
     $('dot').className = 'dot ' + (status.state === 'error' ? 'bad' : busy ? 'busy' : 'ok');
     $('stateLine').textContent = status.state === 'error' ? 'problem: see Server'
       : busy ? `transcribing · ${status.queue} waiting` : status.state === 'idle' ? 'ready' : status.state;
+    $('wave').dataset.busy = busy ? '1' : '';
+    if (!busy) delete $('wave').dataset.busy;
+    $('waveText').textContent = status.state === 'error' ? 'Has a problem. Open Server to see it.'
+      : busy ? `Transcribing · ${status.queue} ${status.queue === 1 ? 'part' : 'parts'} waiting` : 'Ready · waiting for audio';
   } catch (_) {}
 }
 
 // ---- list ----
 let qTimer;
 $('q').oninput = () => { clearTimeout(qTimer); qTimer = setTimeout(loadList, 250); };
+const CHIPS = { done: ['ok', 'Saved'], transcribing: ['busy', 'Transcribing'], recording: ['live', 'Recording'], failed: ['bad', 'Failed'] };
+function chip(st) {
+  const [k, t] = CHIPS[st] || ['', st];
+  return `<span class="chip"><span class="dot ${k}"></span>${esc(t)}</span>`;
+}
 async function loadList() {
   const q = $('q').value.trim();
   const d = await api('/api/recordings?limit=100' + (q ? '&q=' + encodeURIComponent(q) : ''));
   $('recs').innerHTML = d.recordings.map((r) => `
     <a class="item" href="#/r/${encodeURIComponent(r.id)}">
-      <div class="t">${esc(r.title)}${r.status === 'transcribing' ? '<span class="tag">transcribing</span>'
-        : r.status === 'failed' ? '<span class="tag bad">failed</span>' : r.status === 'recording' ? '<span class="tag">recording</span>' : ''}</div>
+      <div class="t"><span class="grow">${esc(r.title)}</span>${chip(r.status)}</div>
       <div class="m">${esc(r.started)} · ${Math.max(1, Math.round(r.audio_s / 60))} min · ${esc(r.source)}</div>
       <div class="p">${esc(r.preview) || '&nbsp;'}</div>
     </a>`).join('');
