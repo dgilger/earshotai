@@ -1,0 +1,566 @@
+<title>Earshot Case Mockup</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..100,400..800&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: a bench-photo stage (the 3D view) up top, a spec sheet underneath. */
+:root {
+  --bg: #eef0ec;          /* bench mat, faint green bias */
+  --stage: #e3e6e0;
+  --panel: #f8f9f6;
+  --fg: #1b211d;
+  --muted: #5d665f;
+  --line: #c9cfc6;
+  --accent: #b86a0c;      /* Kapton amber */
+  --radio: #2f6fb5;       /* antenna keep-clear */
+  --seal: #2e8a6d;        /* seals and membranes */
+  --display: "Archivo", "Helvetica Neue", Arial, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #121613; --stage: #181d19; --panel: #1d231f; --fg: #e5eae4; --muted: #9aa59c;
+    --line: #2f3831; --accent: #e3962f; --radio: #6aa6ea; --seal: #5cc7a2; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #121613; --stage: #181d19; --panel: #1d231f; --fg: #e5eae4; --muted: #9aa59c;
+  --line: #2f3831; --accent: #e3962f; --radio: #6aa6ea; --seal: #5cc7a2; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--fg); font-family: var(--display); font-stretch: 92%;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 20px 40px;
+}
+.wrap { max-width: 1120px; margin: 0 auto; display: grid; gap: 18px; }
+header { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 24px; }
+h1 { font-size: clamp(1.5rem, 3.4vw, 2.3rem); font-weight: 750; font-stretch: 78%; letter-spacing: -0.01em; margin: 0; text-wrap: balance; }
+.dims { font-family: var(--mono); font-size: 0.95rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.dims b { color: var(--fg); font-weight: 600; }
+.stage { position: relative; background: var(--stage); border: 1px solid var(--line); border-radius: 6px; overflow: hidden; height: min(68vh, 640px); min-height: 360px; }
+.stage canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+.status[hidden] { display: none; }
+.status { position: absolute; inset: 0; display: grid; place-items: center; padding: 16px; text-align: center; font-family: var(--mono); color: var(--muted); pointer-events: none; }
+.hint { position: absolute; left: 12px; bottom: 10px; font-family: var(--mono); font-size: 0.72rem; color: var(--muted); pointer-events: none; }
+.lbl { font-family: var(--mono); font-size: 11px; line-height: 1.25; color: var(--fg); background: color-mix(in srgb, var(--panel) 88%, transparent); border: 1px solid var(--line); border-left: 3px solid var(--accent); padding: 3px 6px; border-radius: 3px; white-space: nowrap; pointer-events: none; }
+.lbl.radio { border-left-color: var(--radio); }
+.lbl.seal { border-left-color: var(--seal); }
+.controls { display: flex; flex-wrap: wrap; gap: 10px 22px; align-items: center; }
+.group { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.group > span { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin-right: 4px; }
+button { font: 600 0.85rem var(--display); font-stretch: 90%; color: var(--fg); background: var(--panel); border: 1px solid var(--line); border-radius: 4px; padding: 6px 11px; cursor: pointer; }
+button[aria-pressed="true"] { border-color: var(--accent); box-shadow: inset 0 -2px 0 var(--accent); }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+input[type=range] { accent-color: var(--accent); width: 160px; }
+.compare { font-family: var(--mono); font-size: 0.85rem; font-variant-numeric: tabular-nums; border-collapse: collapse; }
+.compare th, .compare td { text-align: left; padding: 4px 18px 4px 0; border-bottom: 1px dashed var(--line); }
+.compare th { font-family: var(--display); font-weight: 650; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+.compare tr.on td { color: var(--fg); font-weight: 600; }
+.compare td { color: var(--muted); }
+.tablewrap { overflow-x: auto; }
+.sheet { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 14px 28px; }
+.sheet section { min-width: 0; }
+.sheet h2 { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.09em; color: var(--muted); font-weight: 650; margin: 0 0 6px; }
+.sheet ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 7px; }
+.sheet li { line-height: 1.45; max-width: 62ch; }
+.sheet li b { font-weight: 650; }
+.stack { font-family: var(--mono); font-size: 0.8rem; font-variant-numeric: tabular-nums; border-collapse: collapse; width: 100%; }
+.stack td { padding: 3px 0; border-bottom: 1px dashed var(--line); }
+.stack td:last-child { text-align: right; color: var(--muted); }
+.note { font-size: 0.85rem; color: var(--muted); max-width: 75ch; line-height: 1.5; margin: 0; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Earshot rev A, worn</h1>
+    <div class="dims" id="dims">Outside: <b>— × — × —</b> mm</div>
+  </header>
+
+  <div class="stage" id="stage">
+    <div class="status" id="status">Loading board model…</div>
+    <div class="hint">Drag to rotate · scroll or pinch to zoom · right-drag to pan</div>
+  </div>
+
+  <div class="controls">
+    <div class="group"><span>Fabric</span><button id="phone" aria-pressed="true">Shown</button></div>
+    <div class="group" role="group" aria-label="Camera view"><span>View</span>
+      <button id="v-iso">3/4</button><button id="v-top">Front</button><button id="v-mic">Top (mic end)</button><button id="v-usb">Bottom (USB)</button><button id="v-side">Side</button><button id="v-back">Behind the fabric</button>
+    </div>
+    <div class="group" role="group" aria-label="Case display"><span>Case</span>
+      <button id="c-glass" aria-pressed="true">See-through</button><button id="c-solid" aria-pressed="false">Solid</button><button id="c-off" aria-pressed="false">Hidden</button>
+    </div>
+    <div class="group"><span>Explode</span><input id="explode" type="range" min="0" max="1" step="0.01" value="0" aria-label="Explode parts apart"></div>
+    <div class="group"><span>Labels</span><button id="labels" aria-pressed="true">On</button></div>
+  </div>
+
+  <div class="tablewrap">
+    <table class="compare" id="compare">
+      <thead><tr><th>Layout</th><th>Outside (mm)</th><th>Thickness</th><th>As a shirt clip</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <div class="sheet">
+    <section>
+      <h2>How it stays sealed</h2>
+      <ul>
+        <li><b>Magnet clip at the top</b>: two 10 × 5 mm bar magnets in the top corners, either side of the antenna. It hangs from the top hem of a pocket (or a shirt), with a small plastic bar on the other side of the fabric that has magnets only at its ends. Hanging from the top keeps it upright and points the mic vents at the pocket opening.</li>
+        <li><b>O-ring</b> between lid and base, clamped by four small screws.</li>
+        <li><b>Mic vents</b>: two 1 mm vents, each covered inside by a waterproof acoustic membrane (ePTFE sticker, the kind phones use). Sound passes, water doesn't. A fully closed wall would muffle speech too much to transcribe.</li>
+        <li><b>Button</b>: no hole. A thin flexible spot in the lid presses the switch through a plunger.</li>
+        <li><b>LED</b>: no hole. It shines through a 0.5 mm thin patch of the lid.</li>
+        <li><b>USB-C</b>: the one real opening, closed with a tethered silicone plug when not charging.</li>
+      </ul>
+    </section>
+    <section>
+      <h2>Rules that don't change</h2>
+      <ul>
+        <li><b>Antenna</b> (blue box) is at the top too, so the magnets sit beside it, not under it, and the bar's middle is plastic. A phone nearby is well within range.</li>
+        <li><b>Weight</b> is about 37 g (battery 20 g, case and magnets about 13 g, board 4 g), plus about 4 g for the bar. Use N52 magnets and test the hold on your pockets; thick fabric needs stronger ones.</li>
+        <li><b>Mic vents</b> sit in the top end wall, pointing up toward your mouth. Sound reaches the board's two mic holes through the pocket beside the battery. Keep that end clear of jackets and scarves.</li>
+        <li><b>Program first.</b> The Tag-Connect pads are used once to load the bootloader, before the case is closed.</li>
+        <li><b>Print dense.</b> Hobby FDM prints leak through the layers; use 100% infill and a sealing coat, or order resin (SLA) or nylon (MJF) prints.</li>
+      </ul>
+    </section>
+    <section>
+      <h2>Stack, top to bottom</h2>
+      <table class="stack" id="stack"><tbody></tbody></table>
+    </section>
+  </div>
+  <p class="note">A concept to judge size and fit, not a printable file yet. The board and parts are the real rev A layout exported from KiCad; the battery (LP803040, 30 × 42 × 8 mm), seals and case are drawn from their dimensions. Walls are 1.6 mm. No board change is needed. The magnet bar is shown behind a 1 mm fabric layer.</p>
+</div>
+
+<script>
+// Show any failure in the viewer instead of an endless "Loading…"
+(function () {
+  function show(msg) { var el = document.getElementById("status"); if (el) { el.hidden = false; el.textContent = "3D viewer error: " + msg; } }
+  window.addEventListener("error", function (e) { show((e.message || "script failed to load") + (e.filename ? " (" + e.filename.split("/").slice(-2).join("/") + ")" : "")); }, true);
+  window.addEventListener("unhandledrejection", function (e) { show(String(e.reason && e.reason.message || e.reason)); });
+  setTimeout(function () { if (!window.__earshotReady) show("still loading after 20 s; the 3D library may be blocked on this network"); }, 20000);
+})();
+</script>
+<script type="module">
+import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/+esm";
+import { OrbitControls } from "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/controls/OrbitControls.js/+esm";
+import { GLTFLoader } from "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/loaders/GLTFLoader.js/+esm";
+import { RoomEnvironment } from "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/environments/RoomEnvironment.js/+esm";
+import { CSS2DRenderer, CSS2DObject } from "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/renderers/CSS2DRenderer.js/+esm";
+
+const stage = document.getElementById("stage");
+const statusEl = document.getElementById("status");
+const css = (n, d) => getComputedStyle(document.documentElement).getPropertyValue(n).trim() || d;
+
+// ---------- renderer / scene ----------
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+stage.prepend(renderer.domElement);
+const labelRenderer = new CSS2DRenderer();
+Object.assign(labelRenderer.domElement.style, { position: "absolute", inset: "0", pointerEvents: "none" });
+stage.appendChild(labelRenderer.domElement);
+
+const scene = new THREE.Scene();
+const pmrem = new THREE.PMREMGenerator(renderer);
+scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+const sun = new THREE.DirectionalLight(0xffffff, 1.4); sun.position.set(220, 160, 260); scene.add(sun);
+scene.add(new THREE.HemisphereLight(0xffffff, 0x334433, 0.6));
+
+const camera = new THREE.PerspectiveCamera(32, 1, 1, 3000);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+const CENTER = new THREE.Vector3(115, -2, 125);
+
+function setBg() { scene.background = new THREE.Color(css("--stage", "#e3e6e0")); }
+setBg();
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", setBg);
+new MutationObserver(setBg).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+
+function resize() {
+  const w = stage.clientWidth, h = stage.clientHeight;
+  renderer.setSize(w, h, false); labelRenderer.setSize(w, h);
+  camera.aspect = w / h; camera.updateProjectionMatrix();
+}
+new ResizeObserver(resize).observe(stage);
+
+// ---------- groups that move when exploded ----------
+const G = { lid: new THREE.Group(), board: new THREE.Group(), foam: new THREE.Group(), battery: new THREE.Group(), base: new THREE.Group(), marks: new THREE.Group(), wear: new THREE.Group() };
+// Board coordinates have Y out of the lid and Z running down the board; turn the whole device upright as worn:
+// mic end up, lid facing the viewer.
+const root = new THREE.Group(); root.rotation.x = Math.PI / 2; scene.add(root);
+Object.values(G).forEach((g) => root.add(g));
+const worldCenter = () => { root.updateMatrixWorld(true); return root.localToWorld(CENTER.clone()); };
+let labels = [];
+let labelsOn = true;
+function label(text, pos, group, cls = "") {
+  const d = document.createElement("div"); d.className = "lbl " + cls; d.textContent = text;
+  const o = new CSS2DObject(d); o.position.copy(pos); o.userData.built = true; o.visible = labelsOn;
+  group.add(o); labels.push(o); return o;
+}
+function add(group, obj) { obj.userData.built = true; group.add(obj); return obj; }
+
+// board coordinates: X right (100..130), Z down the board (100..150), Y up, all mm
+function boxMesh(x0, x1, y0, y1, z0, z1, mat) {
+  const m = new THREE.Mesh(new THREE.BoxGeometry(x1 - x0, y1 - y0, z1 - z0), mat);
+  m.position.set((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2); return m;
+}
+function boxGeo(x0, x1, y0, y1, z0, z1) {
+  const g = new THREE.BoxGeometry(x1 - x0, y1 - y0, z1 - z0); g.translate((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2); return g;
+}
+function roundedRect(shape, x0, y0, x1, y1, r) {
+  shape.moveTo(x0 + r, y0); shape.lineTo(x1 - r, y0); shape.quadraticCurveTo(x1, y0, x1, y0 + r);
+  shape.lineTo(x1, y1 - r); shape.quadraticCurveTo(x1, y1, x1 - r, y1); shape.lineTo(x0 + r, y1);
+  shape.quadraticCurveTo(x0, y1, x0, y1 - r); shape.lineTo(x0, y0 + r); shape.quadraticCurveTo(x0, y0, x0 + r, y0);
+}
+function rectHole(x0, y0, x1, y1) { const p = new THREE.Path(); p.moveTo(x0, y0); p.lineTo(x1, y0); p.lineTo(x1, y1); p.lineTo(x0, y1); p.lineTo(x0, y0); return p; }
+function circHole(cx, cy, r) { const p = new THREE.Path(); p.absarc(cx, cy, r, 0, Math.PI * 2, true); return p; }
+function plate(x0, x1, z0, z1, y, t, r, holes = []) { // horizontal plate in XZ, holes as [cx, cz, radius]
+  const s = new THREE.Shape(); roundedRect(s, x0, -z1, x1, -z0, r);
+  for (const [cx, cz, rr] of holes) s.holes.push(circHole(cx, -cz, rr));
+  const g = new THREE.ExtrudeGeometry(s, { depth: t, bevelEnabled: false }); g.rotateX(-Math.PI / 2); g.translate(0, y, 0); return g;
+}
+function endWall(x0, x1, y0, y1, z, t, holes) { // vertical wall in XY at depth z..z+t, holes as rect or circle
+  const s = new THREE.Shape(); s.moveTo(x0, y0); s.lineTo(x1, y0); s.lineTo(x1, y1); s.lineTo(x0, y1); s.lineTo(x0, y0);
+  for (const h of holes) s.holes.push(h.length === 3 ? circHole(h[0], h[1], h[2]) : rectHole(...h));
+  const g = new THREE.ExtrudeGeometry(s, { depth: t, bevelEnabled: false }); g.translate(0, 0, z); return g;
+}
+
+const caseMats = {
+  glass: new THREE.MeshPhysicalMaterial({ color: 0xd9dfe0, roughness: 0.35, transparent: true, opacity: 0.28, depthWrite: false, side: THREE.DoubleSide }),
+  solid: new THREE.MeshStandardMaterial({ color: 0x3d4440, roughness: 0.75, side: THREE.DoubleSide }),
+};
+let caseMode = "glass";
+let phoneOn = true, phoneObj = null;
+let caseMeshes = [];
+
+// ---------- the two layouts ----------
+const W = 1.6;                 // wall thickness
+let yb = -0.8, yt = 3.4;        // board underside / top of tallest part (set from the model)
+const results = {};
+
+function clearBuilt() {
+  for (const g of Object.values(G)) for (const c of [...g.children]) if (c.userData.built) g.remove(c);
+  labels = []; caseMeshes = [];
+}
+
+function build(layout) {
+  clearBuilt();
+  const boardTop = yb + 0.85;
+  const stacked = layout === "stack";
+  const batX = stacked ? [100, 130] : [136, 166];
+  let inner, floorTop, lidBot, batY;
+  if (stacked) {
+    batY = [yb - 8.5, yb - 0.5];
+    inner = { x0: 98.8, x1: 131.6, z0: 99.6, z1: 150.4 };   // 1.6 mm on the right for the battery wires
+    floorTop = yb - 9.0; lidBot = yt + 0.6;
+  } else {
+    floorTop = yb - 2.2;                       // air gap under the board: sound path + USB-C legs
+    batY = [floorTop + 0.4, floorTop + 8.4];
+    inner = { x0: 99.6, x1: 166.4, z0: 94.6, z1: 150.4 };
+    lidBot = Math.max(yt, batY[1]) + 0.6;
+  }
+  const WF = stacked ? 2.4 : W;   // floor: deeper on the clip version to hold 2 mm magnets
+  const outer = { x0: inner.x0 - W, x1: inner.x1 + W, z0: inner.z0 - W, z1: inner.z1 + W, y0: floorTop - WF, y1: lidBot + W };
+  const midX = (outer.x0 + outer.x1) / 2;
+  CENTER.set(midX, (outer.y0 + outer.y1) / 2, (outer.z0 + outer.z1) / 2);
+
+  // battery, with a label on the face you can see
+  const pouch = new THREE.MeshStandardMaterial({ color: 0xb9bcc0, metalness: 0.75, roughness: 0.35 });
+  add(G.battery, boxMesh(batX[0], batX[1], batY[0], batY[1], 108, 150, pouch));
+  const cv = document.createElement("canvas"); cv.width = 600; cv.height = 840; const c = cv.getContext("2d");
+  c.fillStyle = "#f4f4f2"; c.fillRect(0, 0, 600, 840); c.fillStyle = "#1f5fa8"; c.font = "bold 92px Arial"; c.fillText("JLJLUP", 60, 150);
+  c.fillStyle = "#222"; c.font = "bold 70px Arial"; c.fillText("LP803040", 60, 280); c.font = "bold 120px Arial"; c.fillText("1000mAh", 50, 450);
+  c.font = "56px Arial"; c.fillText("3.7 V  ·  3.7 Wh", 60, 560);
+  const lab = new THREE.Mesh(new THREE.PlaneGeometry(24, 33), new THREE.MeshStandardMaterial({ map: new THREE.CanvasTexture(cv), roughness: 0.8 }));
+  if (stacked) { lab.rotation.x = Math.PI / 2; lab.position.set(115, batY[0] - 0.05, 129); }
+  else { lab.rotation.x = -Math.PI / 2; lab.position.set(151, batY[1] + 0.05, 129); }
+  add(G.battery, lab);
+
+  const wire = (pts, col) => {
+    const curve = new THREE.CatmullRomCurve3(pts.map((p) => new THREE.Vector3(...p)));
+    return new THREE.Mesh(new THREE.TubeGeometry(curve, 60, 0.45, 10, false), new THREE.MeshStandardMaterial({ color: col, roughness: 0.5 }));
+  };
+  if (stacked) {
+    add(G.foam, boxMesh(100, 130, yb - 0.5, yb - 0.02, 107.6, 150, new THREE.MeshStandardMaterial({ color: 0xd8891c, transparent: true, opacity: 0.55, roughness: 0.4 })));
+    // battery plugs into J3 on the board; the wires go over the right edge, down the side gap to the cell
+    add(G.battery, boxMesh(125.5, 129.3, boardTop + 0.4, boardTop + 3.0, 137.9, 142.1, new THREE.MeshStandardMaterial({ color: 0xf2efe6, roughness: 0.6 })));
+    add(G.battery, wire([[128.6, yb - 3.8, 149.8], [130.9, yb - 3.8, 148.5], [131.0, yb - 1.0, 142.0], [130.6, boardTop + 1.9, 139.6], [129.3, boardTop + 1.8, 139.4]], 0xc0262d));
+    add(G.battery, wire([[127.4, yb - 4.6, 149.8], [130.9, yb - 4.6, 147.8], [131.0, yb - 1.4, 142.4], [130.6, boardTop + 1.3, 140.6], [129.3, boardTop + 1.2, 140.6]], 0x1d1d1d));
+  } else {
+    // battery plugs into J3 on the board; wires cross the gap to the cell
+    add(G.battery, boxMesh(125.5, 129.3, boardTop + 0.4, boardTop + 3.0, 137.9, 142.1, new THREE.MeshStandardMaterial({ color: 0xf2efe6, roughness: 0.6 })));
+    const by = (batY[0] + batY[1]) / 2;
+    add(G.battery, wire([[136.5, by + 0.5, 109.0], [134.6, by + 1.0, 112], [134.4, boardTop + 1.6, 125], [134.2, boardTop + 1.4, 136], [131.0, boardTop + 1.9, 139.4], [129.3, boardTop + 1.8, 139.4]], 0xc0262d));
+    add(G.battery, wire([[136.5, by - 0.5, 110.0], [135.0, by - 0.2, 114], [134.9, boardTop + 0.9, 126], [134.6, boardTop + 0.9, 137], [131.0, boardTop + 1.3, 140.6], [129.3, boardTop + 1.2, 140.6]], 0x1d1d1d));
+  }
+
+  // case: floor + walls (base), lid with sealed button pad and LED window
+  const addCase = (geo, group) => { const m = add(group, new THREE.Mesh(geo, caseMats[caseMode])); m.visible = caseMode !== "off"; caseMeshes.push(m); return m; };
+  addCase(plate(outer.x0, outer.x1, outer.z0, outer.z1, outer.y0, WF, 3), G.base);
+  addCase(plate(outer.x0, outer.x1, outer.z0, outer.z1, lidBot, W, 3, [[125.5, 124, 2.6], [120.5, 127.8, 1.0]]), G.lid);
+  // thin flexible button pad and LED window, flush with the lid's top surface (no through-holes)
+  const seal = css("--seal", "#2e8a6d");
+  const padMat = new THREE.MeshStandardMaterial({ color: 0x4a5752, roughness: 0.9 });
+  const pad = add(G.lid, new THREE.Mesh(new THREE.CylinderGeometry(2.6, 2.6, 0.6, 40), padMat)); pad.position.set(125.5, lidBot + W - 0.3, 124);
+  const win = add(G.lid, new THREE.Mesh(new THREE.CylinderGeometry(1.0, 1.0, 0.5, 30), new THREE.MeshStandardMaterial({ color: 0xfff1e0, transparent: true, opacity: 0.8, emissive: 0x551100 })));
+  win.position.set(120.5, lidBot + W - 0.25, 127.8);
+  const plunger = add(G.lid, new THREE.Mesh(new THREE.CylinderGeometry(1.4, 1.4, lidBot + W - 0.6 - (boardTop + 1.5), 32), new THREE.MeshStandardMaterial({ color: css("--accent", "#b86a0c"), roughness: 0.5 })));
+  plunger.position.set(125.5, (lidBot + W - 0.6 + boardTop + 1.5) / 2, 124);
+  // side walls
+  addCase(boxGeo(outer.x0, inner.x0, floorTop, lidBot, inner.z0, inner.z1), G.base);
+  addCase(boxGeo(inner.x1, outer.x1, floorTop, lidBot, inner.z0, inner.z1), G.base);
+  // mic end wall: one 1 mm vent per mic, into the air gap under the board
+  const ventY = stacked ? yb - 3.5 : (floorTop + yb) / 2;
+  addCase(endWall(outer.x0, outer.x1, floorTop, lidBot, outer.z0, W, [[103.5, ventY, 0.5], [126.5, ventY, 0.5]]), G.base);
+  // membranes on the inside of the vents
+  for (const vx of [103.5, 126.5]) {
+    const mem = add(G.base, new THREE.Mesh(new THREE.BoxGeometry(4, Math.min(3, (yb - floorTop) - 0.2), 0.25), new THREE.MeshStandardMaterial({ color: 0xf5f5f0, roughness: 0.95 })));
+    mem.position.set(vx, ventY, inner.z0 + 0.15);
+  }
+  // USB end wall with the one opening, closed by a silicone plug
+  addCase(endWall(outer.x0, outer.x1, floorTop, lidBot, inner.z1, W, [[110.4, boardTop - 0.2, 119.6, boardTop + 3.7]]), G.base);
+  const plug = add(G.base, boxMesh(110.7, 119.3, boardTop + 0.1, boardTop + 3.4, inner.z1 - 0.2, outer.z1 + 0.9, new THREE.MeshStandardMaterial({ color: 0x5b5f63, roughness: 0.95 })));
+  const tether = add(G.base, boxMesh(118.5, 124, boardTop + 1.2, boardTop + 1.8, outer.z1 + 0.6, outer.z1 + 1.1, plug.material));
+  // O-ring along the lid seam + four screw bosses
+  const ring = []; const o = 0.9;
+  ring.push([inner.x0 + o, lidBot - 0.15, inner.z0 + o], [inner.x1 - o, lidBot - 0.15, inner.z0 + o], [inner.x1 - o, lidBot - 0.15, inner.z1 - o], [inner.x0 + o, lidBot - 0.15, inner.z1 - o]);
+  const ringCurve = new THREE.CatmullRomCurve3(ring.map((p) => new THREE.Vector3(...p)), true, "catmullrom", 0.02);
+  add(G.lid, new THREE.Mesh(new THREE.TubeGeometry(ringCurve, 200, 0.45, 8, true), new THREE.MeshStandardMaterial({ color: seal, roughness: 0.6 })));
+  for (const [sx, sz] of [[outer.x0 + 2.4, outer.z0 + 2.4], [outer.x1 - 2.4, outer.z0 + 2.4], [outer.x0 + 2.4, outer.z1 - 2.4], [outer.x1 - 2.4, outer.z1 - 2.4]]) {
+    const scr = add(G.lid, new THREE.Mesh(new THREE.CylinderGeometry(1.1, 1.1, 0.5, 20), new THREE.MeshStandardMaterial({ color: 0x9aa0a6, metalness: 0.8, roughness: 0.3 })));
+    scr.position.set(sx, outer.y1 + 0.25, sz);
+  }
+
+  if (stacked) {
+    const mag = new THREE.MeshStandardMaterial({ color: 0x9aa1a8, metalness: 0.9, roughness: 0.3 });
+    // two 10 x 5 x 2 mm bar magnets in the top corners, either side of the antenna keep-out (x 106.5-123.5)
+    const magPos = [[101.7, 105], [128.7, 105]];
+    for (const [mx, mz] of magPos) add(G.base, boxMesh(mx - 2.5, mx + 2.5, outer.y0 + 0.2, outer.y0 + 2.2, mz - 5, mz + 5, mag));
+    label("Magnets (2 × 10×5 mm, top corners)", new THREE.Vector3(outer.x0 - 4, outer.y0 + 1, 111), G.base, "seal");
+    // pocket fabric (top hem at the device's top edge) and the bar on the other side of it
+    const wear = new THREE.Group(); wear.userData.built = true; wear.name = "wear";
+    const shirt = new THREE.Mesh(new THREE.BoxGeometry(80, 1.0, 72), new THREE.MeshStandardMaterial({ color: 0x7f9bb5, roughness: 1, transparent: true, opacity: 0.85 }));
+    shirt.position.set(115, outer.y0 - 0.55, 99 + 36); wear.add(shirt);
+    const hem = new THREE.Mesh(new THREE.BoxGeometry(80, 1.6, 2.5), shirt.material); hem.position.set(115, outer.y0 - 0.55, 99.6); wear.add(hem);
+    const bp = new THREE.Shape(); roundedRect(bp, 98.2, -110.5, 132.2, -99.5, 3);
+    const bg = new THREE.ExtrudeGeometry(bp, { depth: 3, bevelEnabled: false }); bg.rotateX(-Math.PI / 2); bg.translate(0, outer.y0 - 4.1, 0);
+    wear.add(new THREE.Mesh(bg, new THREE.MeshStandardMaterial({ color: 0x3d4440, roughness: 0.7 })));
+    for (const [mx, mz] of magPos) wear.add(boxMesh(mx - 2.5, mx + 2.5, outer.y0 - 3.15, outer.y0 - 1.15, mz - 5, mz + 5, mag));
+    wear.visible = phoneOn; G.wear.add(wear); phoneObj = wear;
+    label("Pocket fabric (top hem)", new THREE.Vector3(140, outer.y0 - 0.6, 150), wear);
+    label("Plastic bar, magnets at the ends only", new THREE.Vector3(115, outer.y0 - 5, 96), wear, "seal");
+  }
+
+  // MagSafe ring in a recess on the back, and a generic phone behind it
+  if (!stacked) {
+    const ringC = new THREE.Vector3(midX + 3, outer.y0, (outer.z0 + outer.z1) / 2);
+    const rg = new THREE.RingGeometry(23, 28, 96); rg.rotateX(Math.PI / 2);
+    const ringMesh = add(G.base, new THREE.Mesh(new THREE.CylinderGeometry(28, 28, 0.7, 96, 1, true), new THREE.MeshStandardMaterial({ color: 0x8e959c, metalness: 0.9, roughness: 0.35, side: THREE.DoubleSide })));
+    ringMesh.position.set(ringC.x, outer.y0 + 0.35, ringC.z);
+    const face = add(G.base, new THREE.Mesh(rg, new THREE.MeshStandardMaterial({ color: 0x9aa1a8, metalness: 0.9, roughness: 0.3, side: THREE.DoubleSide })));
+    face.position.set(ringC.x, outer.y0 - 0.01, ringC.z);
+    const tail = add(G.base, boxMesh(ringC.x - 2, ringC.x + 2, outer.y0 - 0.02, outer.y0 + 0.7, ringC.z + 29, ringC.z + 38 > outer.z1 - 0.8 ? outer.z1 - 0.8 : ringC.z + 38, face.material));
+    label("MagSafe ring (in back)", new THREE.Vector3(ringC.x + 30, outer.y0 - 1, ringC.z + 12), G.base, "seal");
+    // phone: 72 x 147 x 7.8 mm, ring centred on the phone, camera bump top-left (as seen from the back)
+    const phone = new THREE.Group(); phone.userData.built = true; phone.name = "phone";
+    const pw = 72, pl = 147, pt = 7.8;
+    const ps = new THREE.Shape(); roundedRect(ps, -pw / 2, -pl / 2, pw / 2, pl / 2, 10);
+    const pg = new THREE.ExtrudeGeometry(ps, { depth: pt, bevelEnabled: false }); pg.rotateX(-Math.PI / 2); pg.translate(0, -pt, 0);
+    phone.add(new THREE.Mesh(pg, new THREE.MeshStandardMaterial({ color: 0x2b3036, roughness: 0.4, metalness: 0.2 })));
+    // camera bump: on the back, top corner; from the device's side the phone's top is toward -Z
+    const bs = new THREE.Shape(); roundedRect(bs, -pw / 2 + 3, pl / 2 - 41, -pw / 2 + 41, pl / 2 - 3, 8);
+    const bg = new THREE.ExtrudeGeometry(bs, { depth: 1.6, bevelEnabled: false }); bg.rotateX(-Math.PI / 2);
+    phone.add(new THREE.Mesh(bg, new THREE.MeshStandardMaterial({ color: 0x3a4047, roughness: 0.35, metalness: 0.3 })));
+    for (const [cx, cz] of [[-pw / 2 + 13, -(pl / 2 - 13)], [-pw / 2 + 30, -(pl / 2 - 13)], [-pw / 2 + 13, -(pl / 2 - 30)]]) {
+      const lens = new THREE.Mesh(new THREE.CylinderGeometry(6.5, 6.5, 2.6, 40), new THREE.MeshStandardMaterial({ color: 0x15181b, metalness: 0.6, roughness: 0.2 }));
+      lens.position.set(cx, 1.3, cz); phone.add(lens);
+    }
+    // mirror X so the bump sits on the left when you look at the back of the phone
+    phone.position.set(ringC.x, outer.y0 - 0.05, ringC.z);
+    phone.visible = phoneOn; G.base.add(phone); phoneObj = phone;
+    label("Phone (generic, 72 × 147 mm)", new THREE.Vector3(ringC.x - 40, outer.y0 - 4, ringC.z + 40), phone);
+  }
+
+  // markers: antenna keep-clear
+  const radio = add(G.marks, new THREE.Mesh(new THREE.BoxGeometry(17, outer.y1 - outer.y0, 4.2), new THREE.MeshBasicMaterial({ color: css("--radio", "#2f6fb5"), transparent: true, opacity: 0.14, depthWrite: false })));
+  radio.position.set(115, (outer.y1 + outer.y0) / 2, 102.1);
+
+  // labels
+  label("Mic vents + waterproof membranes", new THREE.Vector3(115, ventY, outer.z0 - 2.5), G.base, "seal");
+  label("USB-C with silicone plug", new THREE.Vector3(115, boardTop + 1.6, outer.z1 + 3), G.base, "seal");
+  label("Button pad (no hole)", new THREE.Vector3(125.5, outer.y1 + 2.5, 121.5), G.lid, "seal");
+  label("LED shows through", new THREE.Vector3(120.5, outer.y1 + 1.2, 131), G.lid, "seal");
+  label("O-ring seal", new THREE.Vector3(inner.x1 - 1, lidBot + 1.5, 112), G.lid, "seal");
+  label("Antenna end: keep metal away", new THREE.Vector3(115, outer.y1 + 2.5, 101), G.marks, "radio");
+  label("Battery 1000 mAh", stacked ? new THREE.Vector3(outer.x1 + 1, yb - 4.5, 128) : new THREE.Vector3(151, batY[1] + 1.5, 120), G.battery);
+  if (stacked) {
+    label("Kapton / foam", new THREE.Vector3(outer.x1 + 1, yb - 0.3, 112), G.foam);
+    label("Battery plugs into J3", new THREE.Vector3(outer.x1 + 1.5, boardTop + 2, 140), G.battery);
+  } else {
+    label("Battery plug into J3", new THREE.Vector3(133.5, boardTop + 4.5, 141), G.battery);
+  }
+
+  // numbers
+  const r = { w: outer.x1 - outer.x0, l: outer.z1 - outer.z0, t: outer.y1 - outer.y0 };
+  results[layout] = r;
+  const fx = (v) => v.toFixed(1);
+  document.getElementById("dims").innerHTML = `Outside: <b>${fx(r.w)} × ${fx(r.l)} × ${fx(r.t)}</b> mm`;
+  const rows = stacked
+    ? [["Lid", W], ["Clearance", 0.6], ["Tallest part (USB-C)", yt - boardTop], ["Board", 0.85], ["Kapton / foam", 0.5], ["Battery", 8.0], ["Clearance", 0.5], ["Back with magnets", WF]]
+    : [["Lid", W], ["Clearance over battery", lidBot - batY[1]], ["Battery (sets the height)", 8.0], ["Clearance", 0.4], ["Floor", W], ["(board side: parts + board + 2.2 mm air gap fit inside)", null]];
+  document.querySelector("#stack tbody").innerHTML =
+    rows.map(([k, v]) => `<tr><td>${k}</td><td>${v == null ? "" : v.toFixed(1) + " mm"}</td></tr>`).join("") +
+    `<tr><td><b>Total</b></td><td><b>${fx(r.t)} mm</b></td></tr>`;
+  renderCompare(layout);
+  applyExplode();
+}
+
+function renderCompare(active) {
+  const names = { stack: "Stacked (shown)", side: "Side by side" };
+  const fits = { stack: "pin-sized, 2 magnets", side: "too wide for a shirt" };
+  const tb = document.querySelector("#compare tbody");
+  tb.innerHTML = ["stack", "side"].map((k) => {
+    const r = results[k];
+    const dims = r ? `${r.w.toFixed(1)} × ${r.l.toFixed(1)} × ${r.t.toFixed(1)}` : "—";
+    const t = r ? `${r.t.toFixed(1)} mm` : "—";
+    return `<tr class="${k === "stack" ? "on" : ""}"><td>${names[k]}</td><td>${dims}</td><td>${t}</td><td>${fits[k]}</td></tr>`;
+  }).join("");
+}
+
+// ---------- views (offsets from the device centre, scaled to its size) ----------
+const viewDirs = { iso: [0.55, 0.35, 0.75], top: [0.0001, 0, 1], usb: [0, -1, 0.25], mic: [0, 1, 0.25], side: [1, 0.05, 0.05], back: [0.0001, 0, -1] };
+let layout = "stack";
+let tween = null;
+function viewPos(name) {
+  const r = results[layout] || { w: 70, l: 54 };
+  const dist = 2.4 * Math.max(r.w, r.l);
+  const d = new THREE.Vector3(...viewDirs[name]).normalize().multiplyScalar(dist);
+  return d.add(worldCenter());
+}
+function go(name) {
+  const to = viewPos(name);
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches) { camera.position.copy(to); controls.target.copy(worldCenter()); return; }
+  tween = { from: camera.position.clone(), to, fromT: controls.target.clone(), toT: worldCenter(), t: 0 };
+}
+for (const k of Object.keys(viewDirs)) document.getElementById("v-" + k).addEventListener("click", () => go(k));
+
+function setLayout(l) {
+  layout = l;
+  build(l); go("iso");
+}
+const phoneBtn = document.getElementById("phone");
+phoneBtn.addEventListener("click", () => {
+  phoneOn = phoneBtn.getAttribute("aria-pressed") !== "true";
+  phoneBtn.setAttribute("aria-pressed", String(phoneOn)); phoneBtn.textContent = phoneOn ? "Shown" : "Hidden";
+  if (phoneObj) phoneObj.visible = phoneOn;
+});
+
+// ---------- case display ----------
+function setCase(mode) {
+  caseMode = mode;
+  for (const id of ["glass", "solid", "off"]) document.getElementById("c-" + id).setAttribute("aria-pressed", String(id === mode));
+  for (const m of caseMeshes) { m.visible = mode !== "off"; if (mode !== "off") m.material = caseMats[mode]; }
+}
+document.getElementById("c-glass").addEventListener("click", () => setCase("glass"));
+document.getElementById("c-solid").addEventListener("click", () => setCase("solid"));
+document.getElementById("c-off").addEventListener("click", () => setCase("off"));
+const lblBtn = document.getElementById("labels");
+lblBtn.addEventListener("click", () => {
+  labelsOn = lblBtn.getAttribute("aria-pressed") !== "true";
+  lblBtn.setAttribute("aria-pressed", String(labelsOn)); lblBtn.textContent = labelsOn ? "On" : "Off";
+  labels.forEach((l) => (l.visible = labelsOn));
+});
+
+const explode = document.getElementById("explode");
+function applyExplode() {
+  const t = parseFloat(explode.value);
+  G.lid.position.y = 22 * t; G.board.position.y = 11 * t; G.foam.position.y = 4 * t; G.battery.position.y = (layout === "stack" ? -3 : 5) * t; G.base.position.y = -12 * t;
+  G.wear.position.y = -20 * t;
+  G.marks.visible = t < 0.05;
+}
+explode.addEventListener("input", applyExplode);
+
+// ---------- load the real board (base64 GLB in board-model.js) ----------
+// The two MEMS mics (U6, U7) have no vendor 3D model: draw their 3.5 x 2.65 x 0.98 mm cans.
+function addMics(bt) {
+  const base = new THREE.MeshStandardMaterial({ color: 0x2a2f2b, roughness: 0.7 });
+  const lid = new THREE.MeshStandardMaterial({ color: 0xc9ccd0, metalness: 0.85, roughness: 0.3 });
+  for (const [x, z, name] of [[103.5, 104.08, "U6"], [126.5, 104.08, "U7"]]) {
+    G.board.add(boxMesh(x - 1.325, x + 1.325, bt, bt + 0.25, z - 1.75, z + 1.75, base));
+    G.board.add(boxMesh(x - 1.275, x + 1.275, bt + 0.25, bt + 0.98, z - 1.7, z + 1.7, lid));
+    const dot = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 0.02, 16), base);
+    dot.position.set(x - 0.75, bt + 0.99, z - 1.2); G.board.add(dot);
+    const l = label("Mic " + name, new THREE.Vector3(x, bt + 2.2, z + 3.2), G.board, "seal"); l.userData.built = false;
+  }
+}
+function isInside(o, root) { for (let p = o; p; p = p.parent) if (p === root) return true; return false; }
+function start() {
+  build("side"); build("stack");          // fill both rows of the comparison, show the worn (stacked) version
+  setLayout("stack");
+  camera.position.copy(viewPos("iso")); controls.target.copy(worldCenter()); tween = null;
+  statusEl.hidden = true; window.__earshotReady = true;
+  if (location.search.includes("snap")) snap();
+}
+function fallback() {
+  G.board.add(boxMesh(100, 130, -0.8, 0, 100, 150, new THREE.MeshStandardMaterial({ color: 0x1f5a35 })));
+  yb = -0.8; yt = 3.4; addMics(0.05); start();
+  statusEl.hidden = false; statusEl.textContent = "Board model didn't load; showing the case around a plain board.";
+}
+function loadBoard() {
+  try {
+    const b64 = window.EARSHOT_BOARD_GLB;
+    if (!b64) return fallback();
+    const bin = atob(b64); const buf = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
+    new GLTFLoader().parse(buf.buffer, "", (gltf) => {
+      const m = gltf.scene; m.scale.setScalar(1000); G.board.add(m);
+      // The LCSC model for the battery header (J3) stands on end; hide it and draw the real 3.5 mm-tall part.
+      const j3 = m.getObjectByName("J3"); if (j3) j3.visible = false;
+      root.rotation.x = 0; root.updateMatrixWorld(true);   // measure in board coordinates, then stand it up again
+      m.updateMatrixWorld(true);
+      const box = new THREE.Box3();
+      m.traverse((o) => { if (o.isMesh && !(j3 && isInside(o, j3))) box.expandByObject(o); });
+      yb = box.min.y + 0.05; yt = box.max.y;
+      root.rotation.x = Math.PI / 2; root.updateMatrixWorld(true);
+      const bt = yb + 0.85;
+      G.board.add(boxMesh(121.0, 125.5, bt, bt + 3.5, 137.5, 142.5, new THREE.MeshStandardMaterial({ color: 0xf2efe6, roughness: 0.6 })));
+      addMics(bt);
+      start();
+    }, fallback);
+  } catch (e) { fallback(); }
+}
+function snap() { // test aid: copy a few rendered views into plain images
+  resize(); const out = document.createElement("div"); out.style.cssText = "display:flex;flex-wrap:wrap;gap:4px";
+  const want = (location.search.match(/layout=(\w+)/) || [])[1]; if (want) { setLayout(want); tween = null; }
+  const ex = location.search.match(/explode=([0-9.]+)/); if (ex) { explode.value = ex[1]; applyExplode(); }
+  for (const k of ["iso", "top", "mic", "usb", "side", "back"]) {
+    const wc = worldCenter(); camera.position.copy(viewPos(k)); controls.target.copy(wc); controls.update(); camera.lookAt(wc);
+    renderer.render(scene, camera); const im = new Image(); im.src = renderer.domElement.toDataURL(); im.style.width = "380px"; out.appendChild(im);
+  }
+  document.body.prepend(out);
+}
+const s = document.createElement("script");
+s.src = "board-model.js"; s.onload = loadBoard; s.onerror = fallback;
+document.head.appendChild(s);
+
+// ---------- loop ----------
+resize();
+camera.position.set(120, 60, 160); controls.target.set(0, 0, 0);
+renderer.setAnimationLoop(() => {
+  if (tween) {
+    tween.t = Math.min(1, tween.t + 0.04);
+    const e = 1 - Math.pow(1 - tween.t, 3);
+    camera.position.lerpVectors(tween.from, tween.to, e);
+    controls.target.lerpVectors(tween.fromT, tween.toT, e);
+    if (tween.t >= 1) tween = null;
+  }
+  controls.update();
+  renderer.render(scene, camera);
+  labelRenderer.render(scene, camera);
+});
+</script>

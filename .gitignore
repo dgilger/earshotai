@@ -1,0 +1,29 @@
+# Secrets
+firmware/include/secrets.h
+.env
+
+# PlatformIO
+.pio/
+.vscode/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Recorded audio / server data
+server/data/
+*.wav
+
+# KiCad
+*-backups/
+*.kicad_prl
+fp-info-cache
+*.lck
+_autosave-*
+*.bak
+hardware/enclosure/board-model.js
+
+# Enclosure: generated reference geometry
+hardware/enclosure/out/earshot-assembly.step
+hardware/enclosure/out/ref-*.stl
