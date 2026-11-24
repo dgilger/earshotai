@@ -80,6 +80,7 @@ object Speech {
         fun add(timeMs: Long, s: FloatArray) {
             if (pcm == null) {
                 startMs = timeMs
+                dir.mkdirs()  // the folder must exist; never let a missing folder stop the recording
                 pcm = DataOutputStream(File(dir, "$timeMs.pcm.part").outputStream().buffered(1 shl 16))
                 idx = StringBuilder()
                 samples = 0; speech = 0
@@ -102,6 +103,7 @@ object Speech {
         fun close() {
             val out = pcm ?: return
             out.close()
+            dir.mkdirs()
             File(dir, "$startMs.pcm.part").renameTo(File(dir, "$startMs.pcm"))
             File(dir, "$startMs.idx").writeText(idx.toString())
             pcm = null; idx = null

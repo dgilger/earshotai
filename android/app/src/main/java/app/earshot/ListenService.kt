@@ -160,11 +160,13 @@ class ListenService : Service() {
             status = "Models not downloaded"
             return
         }
-        startProcessor()
+        // Mark the session as live BEFORE its folder exists. Else the processor can see a folder
+        // with no live session, take it for a crash leftover and delete it while we record into it.
         val id = store.newSessionId(System.currentTimeMillis())
-        store.sessionDir(id)
         settings.sessionId = id
         sessionId = id
+        store.sessionDir(id)
+        startProcessor()
         wakeLock = getSystemService(PowerManager::class.java)
             .newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "earshot:record").apply { acquire() }
         capture = true
@@ -190,13 +192,8 @@ class ListenService : Service() {
     }
 
     @SuppressLint("MissingPermission")
-    private fun captureLoop(id: Long) {
-        val vad = try { Speech.vad(this, settings.vadThreshold) } catch (e: Exception) {
-            status = "Voice detector failed to load: ${e.message}"
-            return
-        }
-        val rate = Speech.RATE
-        val minBuf = AudioRecord.getMinBufferSize(rate, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT)
+    private fun openMic(): AudioRecord? {
+        val minBuf = AudioRecord.getMinBufferSize(Speech.RATE, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT)
         val source = when (settings.micSource) {
             "voice" -> MediaRecorder.AudioSource.VOICE_RECOGNITION
             "raw" -> if (getSystemService(android.media.AudioManager::class.java)
@@ -204,51 +201,92 @@ class ListenService : Service() {
                 MediaRecorder.AudioSource.UNPROCESSED else MediaRecorder.AudioSource.VOICE_RECOGNITION
             else -> MediaRecorder.AudioSource.MIC
         }
-        val rec = AudioRecord(source, rate, AudioFormat.CHANNEL_IN_MONO,
-            AudioFormat.ENCODING_PCM_16BIT, maxOf(minBuf, Speech.BLOCK * 2 * 8))
-        if (rec.state != AudioRecord.STATE_INITIALIZED) {
-            status = "Microphone unavailable"
-            rec.release()
-            vad.release()
+        val rec = try {
+            AudioRecord(source, Speech.RATE, AudioFormat.CHANNEL_IN_MONO,
+                AudioFormat.ENCODING_PCM_16BIT, maxOf(minBuf, Speech.BLOCK * 2 * 8))
+        } catch (e: Exception) {
+            Log.w("earshot", "AudioRecord failed", e); return null
+        }
+        if (rec.state != AudioRecord.STATE_INITIALIZED) { rec.release(); return null }
+        try { rec.startRecording() } catch (e: Exception) { rec.release(); return null }
+        if (rec.recordingState != AudioRecord.RECORDSTATE_RECORDING) { rec.release(); return null }
+        return rec
+    }
+
+    /**
+     * Records until [capture] is false. Android can take the mic away (a call, the voice
+     * assistant, another recording app): then reads fail. Instead of stopping, the speech so far
+     * is kept, and the mic is opened again every 2 s until it works.
+     */
+    private fun captureLoop(id: Long) {
+        val vad = try { Speech.vad(this, settings.vadThreshold) } catch (e: Exception) {
+            status = "Voice detector failed to load: ${e.message}"
             return
         }
+        val rate = Speech.RATE
         val writer = Speech.ChunkWriter(store.sessionDir(id))
         val block = ShortArray(Speech.BLOCK)
         val floats = FloatArray(Speech.BLOCK)
-        rec.startRecording()
-        val col = Speech.Collector(vad, writer, System.currentTimeMillis())
+        var rec: AudioRecord? = null
+        var col: Speech.Collector? = null
         fun closeChunk() {
             if (writer.open) { writer.close(); processor?.wake() }
             chunkSpeechSec = 0
         }
+        fun pause(why: String) {
+            Log.w("earshot", "mic lost: $why")
+            try { col?.flush() } catch (e: Exception) { Log.w("earshot", "flush failed", e) }
+            col = null
+            vad.reset()
+            rec?.let { try { it.stop() } catch (_: Exception) {}; it.release() }
+            rec = null
+            speaking = false
+            levelDb = -90f
+        }
         try {
             while (capture) {
+                if (rec == null) {
+                    rec = openMic()
+                    if (rec == null) {
+                        status = "Microphone in use by another app. Recording goes on when it is free."
+                        if (writer.due(System.currentTimeMillis())) closeChunk()
+                        Thread.sleep(2000)
+                        continue
+                    }
+                    status = ""
+                    // New start time: the samples count from here, so the transcript times stay right.
+                    col = Speech.Collector(vad, writer, System.currentTimeMillis())
+                }
+                val r = rec!!
                 var got = 0
+                var err = 0
                 while (got < block.size && capture) {
-                    val n = rec.read(block, got, block.size - got)
-                    if (n < 0) throw IllegalStateException("AudioRecord.read error $n")
+                    val n = r.read(block, got, block.size - got)
+                    if (n < 0) { err = n; break }
                     got += n
                 }
+                if (err < 0) { pause("read error $err"); continue }
                 if (got < block.size) break
                 var sum = 0.0
                 for (i in block.indices) { val x = block[i] / 32768f; floats[i] = x; sum += x * x }
                 levelDb = (10 * kotlin.math.log10(sum / block.size + 1e-9)).toFloat().coerceAtLeast(-90f)
-                col.feed(floats)
-                speaking = col.speaking
+                col!!.feed(floats)
+                speaking = col!!.speaking
                 chunkSpeechSec = (writer.speech / rate).toInt()
                 if (writer.due(System.currentTimeMillis())) closeChunk()
             }
+        } catch (e: InterruptedException) {
+            // stopping
+        } catch (e: java.io.IOException) {
+            Log.e("earshot", "capture stopped", e)
+            status = "Recording stopped: could not save audio on this phone. Is the phone storage full? (${e.message ?: e.javaClass.simpleName})"
         } catch (e: Exception) {
             Log.e("earshot", "capture stopped", e)
-            status = "Microphone error: ${e.message}"
+            status = "Recording stopped: ${e.message ?: e.javaClass.simpleName}"
         } finally {
-            try { col.flush() } catch (e: Exception) { Log.w("earshot", "flush failed", e) }
+            pause("stopped")
             closeChunk()
-            rec.stop()
-            rec.release()
             vad.release()
-            speaking = false
-            levelDb = -90f
         }
     }
 
