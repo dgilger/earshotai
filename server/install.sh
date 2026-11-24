@@ -10,7 +10,9 @@
 #
 # Other uses (the 'earshot' command calls these):
 #   install.sh --remote      only set up access from outside your home (Cloudflare or Tailscale)
-#   install.sh --update      get the newest code, update, restart
+#   install.sh               first time: guided setup. Already installed: same as --update
+#   install.sh --update      get the newest code, update, restart (no questions)
+#   install.sh --setup       the full guided setup again (keeps transcripts)
 #   install.sh --uninstall   remove Earshot (asks before it deletes transcripts)
 
 set -uo pipefail
@@ -701,19 +703,40 @@ uninstall() {
 }
 
 # ---- main -------------------------------------------------------------------------------------
+# Only update: new code, Python packages, models, service files, restart. No questions;
+# settings, tokens, tunnel and transcripts stay as they are.
+do_update() {
+  TOTAL_STEPS=4
+  GPU=$(grep -q LD_LIBRARY_PATH "$ENV_FILE" 2>/dev/null && echo cuda || echo cpu)
+  get_code; install_python; download_models
+  chmod 700 "$DATA_DIR"; write_service
+  step "Restart"; systemctl restart earshot; sleep 3
+  systemctl is-active --quiet earshot && ok "Earshot is running the new version" || die "Earshot did not start." "sudo journalctl -u earshot -n 50"
+}
+
 case "${1:-}" in
   --remote)
     need_root "$@"; TOTAL_STEPS=2; setup_remote; connect_devices; exit 0 ;;
   --update)
-    need_root "$@"; TOTAL_STEPS=4
-    GPU=$(grep -q LD_LIBRARY_PATH "$ENV_FILE" 2>/dev/null && echo cuda || echo cpu)
-    get_code; install_python; download_models
-    chmod 700 "$DATA_DIR"; write_service
-    step "Restart"; systemctl restart earshot; sleep 3
-    systemctl is-active --quiet earshot && ok "Earshot is running the new version" || die "Earshot did not start." "sudo journalctl -u earshot -n 50"
-    exit 0 ;;
+    need_root "$@"; do_update; exit 0 ;;
   --uninstall)
     uninstall "$@"; exit 0 ;;
+  --setup) ;;   # full guided setup, also when Earshot is already installed
+  "")
+    # Already installed (the service and its settings exist): running the installer again
+    # only updates. The full setup with all its questions is: install.sh --setup
+    if [ -f "$ENV_FILE" ] && [ -f /etc/systemd/system/earshot.service ] && [ -d "$APP_DIR/.git" ]; then
+      need_root "$@"
+      echo
+      echo "  ${B}earshot${N} is already installed. Updating it; your transcripts, settings, tokens and"
+      echo "  remote access stay as they are. (To answer all the setup questions again: add --setup)"
+      do_update
+      echo
+      echo "  Phone and AI connection details: sudo earshot pair      Status: sudo earshot status"
+      exit 0
+    fi ;;
+  *)
+    echo "Unknown option: $1. Use: --update, --setup, --remote or --uninstall." >&2; exit 2 ;;
 esac
 
 need_root "$@"

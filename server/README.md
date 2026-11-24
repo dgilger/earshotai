@@ -26,6 +26,9 @@ While the project is private, download it first and run the installer from the c
 git clone https://github.com/dgilger/earshotai && sudo bash earshotai/server/install.sh
 ```
 
+Running the installer again on a server that already has Earshot only updates it (no questions;
+transcripts, settings and remote access stay). To answer all the setup questions again: `--setup`.
+
 The installer guides you through every step and checks each one:
 
 1. Checks the computer (memory, disk, internet).
