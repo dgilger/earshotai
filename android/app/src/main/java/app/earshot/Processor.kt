@@ -60,7 +60,7 @@ class Processor(private val ctx: Context) {
                         stage = ""
                     }
                 }
-                if (id == current()) continue
+                if (id == current()) continue   // still recording: never delete
                 val stop = store.stopped(id) ?: continue
                 if (dir.listFiles { f -> f.name.endsWith(".pcm.part") }?.isNotEmpty() == true) continue
                 if (store.finish(id, stop.first, stop.second)) finished = true

@@ -160,11 +160,13 @@ class ListenService : Service() {
             status = "Models not downloaded"
             return
         }
-        startProcessor()
+        // Mark the session as live BEFORE its folder exists. Else the processor can see a folder
+        // with no live session, take it for a crash leftover and delete it while we record into it.
         val id = store.newSessionId(System.currentTimeMillis())
-        store.sessionDir(id)
         settings.sessionId = id
         sessionId = id
+        store.sessionDir(id)
+        startProcessor()
         wakeLock = getSystemService(PowerManager::class.java)
             .newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "earshot:record").apply { acquire() }
         capture = true
@@ -275,9 +277,12 @@ class ListenService : Service() {
             }
         } catch (e: InterruptedException) {
             // stopping
+        } catch (e: java.io.IOException) {
+            Log.e("earshot", "capture stopped", e)
+            status = "Recording stopped: could not save audio on this phone. Is the phone storage full? (${e.message ?: e.javaClass.simpleName})"
         } catch (e: Exception) {
             Log.e("earshot", "capture stopped", e)
-            status = "Microphone error: ${e.message ?: e.javaClass.simpleName}"
+            status = "Recording stopped: ${e.message ?: e.javaClass.simpleName}"
         } finally {
             pause("stopped")
             closeChunk()
